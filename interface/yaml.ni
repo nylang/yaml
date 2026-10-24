@@ -223,6 +223,7 @@ pub method(YamlSeq) Len() -> int32;
  * @brief UTF-8 payload of a string scalar (cross-package accessor).
  */
 pub method(YamlStr) Text() -> string;
+pub method(YamlBool) Value() -> bool;
 
 /**
  * @brief Integer scalar payload.

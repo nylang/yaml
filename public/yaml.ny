@@ -40,6 +40,10 @@ pub struct YamlBool {
   value: bool;
 }
 
+pub method(YamlBool) Value() -> bool {
+  return self.value;
+}
+
 /**
  * @brief YAML integer payload (`int64` range).
  */
