@@ -1,6 +1,6 @@
 # YAML support package for nyra-core.
 name: yaml
-version: 0.0.1
+version: 0.38.0-own
 dependencies:
   stdlib:
     path: ../stdlib
