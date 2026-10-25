@@ -123,6 +123,13 @@ func yaml_dom_frame_alloc(
   if raw == (ptr<int8>.null()) {
     return ptr<YamlDomFrame>.null();
   }
+  return yaml_dom_frame_initialize(raw, durable, is_map, prev);
+}
+
+func yaml_dom_frame_initialize(raw: *mut int8, durable: Allocator, is_map: bool,
+                              prev: *mut YamlDomFrame) -> *mut YamlDomFrame {
+  // Owned field assignment drops the previous value; raw heap bytes have none.
+  memset(raw as *mut uint8, 0 as uint8, sizeof(YamlDomFrame) as uintptr);
   let fp: *mut YamlDomFrame = cast<YamlDomFrame>.pointer(raw);
   unsafe {
     (*fp).is_map = is_map;

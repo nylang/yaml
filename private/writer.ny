@@ -107,6 +107,8 @@ pub static method(YamlWriter) New() -> YamlWriter {
   if raw == (ptr<int8>.null()) {
     return YamlWriter{ st: ptr<int8>.null() };
   }
+  // A recycled heap block can contain owned fields from unrelated values.
+  memset(raw as *mut uint8, 0 as uint8, nbytes as uintptr);
   let sp: *mut YamlDomState = cast<YamlDomState>.pointer(raw);
   var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
   unsafe {
