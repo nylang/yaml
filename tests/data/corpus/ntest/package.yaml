@@ -1,0 +1,13 @@
+name: ntest
+version: 0.0.1
+dependencies:
+  kernel:
+    path: ../kernel
+
+# Partition roots for open vs closed distribution (ADR 0013).
+directories:
+  interface:
+    - interface
+  public:
+    - public
+  private: []

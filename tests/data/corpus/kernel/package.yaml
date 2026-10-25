@@ -1,0 +1,11 @@
+name: kernel
+version: 0.0.1
+
+# Partition roots for open vs closed distribution (ADR 0013).
+# Does not list modules — TU membership stays inferred from source.
+directories:
+  interface:
+    - interface
+  public: []
+  private:
+    - private

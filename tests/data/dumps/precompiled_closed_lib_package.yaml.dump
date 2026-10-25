@@ -1,0 +1,1 @@
+{"t":"map","v":[{"k":"name","v":{"t":"str","v":"closed_precompiled_lib"}},{"k":"version","v":{"t":"str","v":"0.0.1"}},{"k":"directories","v":{"t":"map","v":[{"k":"interface","v":{"t":"seq","v":[{"t":"str","v":"interface"}]}},{"k":"public","v":{"t":"seq","v":[]}},{"k":"private","v":{"t":"seq","v":[{"t":"str","v":"private"}]}}]}}]}

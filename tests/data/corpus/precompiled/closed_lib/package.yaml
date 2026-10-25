@@ -1,0 +1,9 @@
+name: closed_precompiled_lib
+version: 0.0.1
+
+directories:
+  interface:
+    - interface
+  public: []
+  private:
+    - private

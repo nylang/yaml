@@ -1,0 +1,3 @@
+# anchors — out of v1
+x: &a 1
+y: *a

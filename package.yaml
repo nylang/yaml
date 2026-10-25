@@ -3,10 +3,10 @@ name: yaml
 version: 0.18.0
 dependencies:
   stdlib:
-    path: ../stdlib
+    path: ../../source/stdlib
 dev-dependencies:
   ntest:
-    path: ../ntest
+    path: ../../source/ntest
 directories:
   interface:
     - interface

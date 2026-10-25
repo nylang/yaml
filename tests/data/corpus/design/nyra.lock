@@ -1,0 +1,14 @@
+version: 1
+packages:
+  gitlib:
+    kind: git
+    git: file:///tmp/gitlib.git
+    rev: abc123def456
+    resolved: .nyra/cache/git/gitlib
+    digest: sha256:deadbeef
+  reglib:
+    kind: registry
+    registry: answerlib
+    version: "0.1.0"
+    resolved: /abs/or/relative/root
+    digest: sha256:cafebabe

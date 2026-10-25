@@ -1,0 +1,1 @@
+{"t":"map","v":[{"k":"name","v":{"t":"str","v":"quoted"}},{"k":"plain","v":{"t":"str","v":"hello"}},{"k":"double","v":{"t":"str","v":"a:b"}},{"k":"single","v":{"t":"str","v":"it's"}},{"k":"empty","v":{"t":"str","v":""}}]}

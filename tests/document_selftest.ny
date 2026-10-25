@@ -280,7 +280,7 @@ func test_yaml_document_parsefile_package_yaml() {
   let r: Result<YamlDocument, YamlError> = YamlDocument.ParseFile("package.yaml", durable, scratch);
   if !r.IsOk() {
     let r2: Result<YamlDocument, YamlError> = YamlDocument.ParseFile(
-      "source/yaml/package.yaml",
+      "third_party/yaml/package.yaml",
       durable,
       scratch
     );

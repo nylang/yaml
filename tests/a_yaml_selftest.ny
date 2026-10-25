@@ -337,7 +337,7 @@ func test_yaml_emit_roundtrip_name_x() {
   let pkg: Result<YamlDocument, YamlError> = YamlDocument.ParseFile("package.yaml", durable, scratch);
   if pkg.IsErr() {
     let pkg2: Result<YamlDocument, YamlError> = YamlDocument.ParseFile(
-      "source/yaml/package.yaml",
+      "third_party/yaml/package.yaml",
       durable,
       scratch
     );

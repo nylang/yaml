@@ -1,0 +1,5 @@
+name: precompiled_app
+# Example consumer — tests rewrite dependencies to a temp artifact:
+# dependencies:
+#   precompiled_lib:
+#     precompiled: /path/to/artifact

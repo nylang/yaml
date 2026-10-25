@@ -11,7 +11,7 @@ func yaml_path_exists(path: string) -> bool {
 }
 
 func yaml_resolve_testdata(rel: string) -> string {
-  // Test inputs live under repository tests/, independent of the package cwd.
+  // Resolve package-owned fixtures from either the package or workspace cwd.
   var prefix: string = "";
   var depth: int32 = 0;
   while depth < 8 {
@@ -19,6 +19,8 @@ func yaml_resolve_testdata(rel: string) -> string {
     if yaml_path_exists(candidate) {
       return candidate;
     }
+    let workspace: string = prefix.Concat("third_party/yaml/").Concat(rel);
+    if yaml_path_exists(workspace) { return workspace; }
     prefix = "../".Concat(prefix);
     depth = depth + 1;
   }

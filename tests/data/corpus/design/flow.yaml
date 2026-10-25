@@ -1,0 +1,3 @@
+# Flow collections (lockfile-style compact maps / seqs). Not used in product package.yaml today.
+root: {a: 1, b: 2}
+list: [true, false, null]

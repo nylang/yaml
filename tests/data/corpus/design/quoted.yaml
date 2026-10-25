@@ -1,0 +1,5 @@
+name: quoted
+plain: hello
+double: "a:b"
+single: 'it''s'
+empty: ""

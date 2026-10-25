@@ -1,0 +1,19 @@
+name: stdlib
+version: 0.0.1
+dependencies:
+  kernel:
+    path: ../kernel
+
+# Test-only (nyra test). Stripped for normal build / dependents.
+dev-dependencies:
+  ntest:
+    path: ../ntest
+
+# Partition roots for open vs closed distribution (ADR 0013).
+directories:
+  interface:
+    - interface
+  public:
+    - public
+  private:
+    - private

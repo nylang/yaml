@@ -1,0 +1,14 @@
+name: locators_sample
+version: "0.1.0"
+
+dependencies:
+  pathlib:
+    path: ../pathlib
+  pclib:
+    precompiled: ../artifacts/pclib
+  gitlib:
+    git: file:///tmp/gitlib.git
+    rev: abc123def
+  reglib:
+    registry: answerlib
+    version: "0.1.0"
