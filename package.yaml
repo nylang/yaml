@@ -1,6 +1,7 @@
 # YAML support package for nyra-core.
 name: yaml
 version: 0.18.0
+license: MIT
 dependencies:
   stdlib:
     path: ../../source/stdlib
