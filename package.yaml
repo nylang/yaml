@@ -2,12 +2,6 @@
 name: yaml
 version: 0.18.0
 license: MIT
-dependencies:
-  stdlib:
-    path: ../../source/stdlib
-dev-dependencies:
-  ntest:
-    path: ../../source/ntest
 directories:
   interface:
     - interface
