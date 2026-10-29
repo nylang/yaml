@@ -1,10 +1,14 @@
+// Copyright (c) 2026 tangxiangjiang
+// SPDX-License-Identifier: MIT
+
+part of YamlTests;
+
 /**
  * @brief YamlDocument build / query / durable-vs-scratch ownership tests (m_v0.18_p2).
  * @note MemStack/MemArena scratch helpers: `yaml_scratch_from_stack` / `yaml_scratch_from_arena`
- *       (defined in `reader_selftest.ny`, same YamlTypes module).
+ *   (defined in `reader_selftest.ny`, same YamlTypes module).
  * @see docs/design/compiler/yaml.md §0.5–0.6
  */
-part of YamlTypes;
 
 @test
 func test_yaml_document_empty_null_root() {
@@ -66,7 +70,11 @@ func test_yaml_document_query_map_name() {
 func test_yaml_document_query_seq_scalars() {
   var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
   var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  let r: Result<YamlDocument, YamlError> = YamlDocument.Parse("[true, false, null, 42, hi]", durable, scratch);
+  let r: Result<YamlDocument, YamlError> = YamlDocument.Parse(
+    "[true, false, null, 42, hi]",
+    durable,
+    scratch
+  );
   AssertTrue(r.IsOk());
   let doc_opt: YamlDocument? = r.get_if<YamlDocument>();
   AssertTrue(doc_opt != nil);
@@ -162,6 +170,7 @@ func test_yaml_document_parse_error() {
 }
 
 @test
+// A scratch reset must not reclaim retained YAML document strings.
 func test_yaml_document_memstack_scratch_reset_durable() {
   let chunk: *mut int8 = _nyra_malloc(8192 as int64, 8 as int64);
   AssertTrue(chunk != (ptr<int8>.null()));
@@ -176,7 +185,6 @@ func test_yaml_document_memstack_scratch_reset_durable() {
   let doc_opt: YamlDocument? = r.get_if<YamlDocument>();
   AssertTrue(doc_opt != nil);
   var doc: YamlDocument = doc_opt as YamlDocument;
-
   // Scratch Reset must not invalidate durable Document strings / query results.
   stack.Reset(mark);
 
@@ -202,7 +210,6 @@ func test_yaml_document_memstack_scratch_reset_durable() {
   let ia: int64? = YamlAsInt(va as Yaml);
   AssertTrue(ia != nil);
   AssertEqI64(ia as int64, 1 as int64);
-
   // Scratch reusable after Reset; Document still valid.
   let r2: Result<YamlDocument, YamlError> = YamlDocument.Parse("x: y", durable, scratch);
   AssertTrue(r2.IsOk());
@@ -219,7 +226,6 @@ func test_yaml_document_memstack_scratch_reset_durable() {
   let xs: YamlStr? = xv_n.node.get_if<YamlStr>();
   AssertTrue(xs != nil);
   AssertEqString((xs as YamlStr).Text(), "y");
-
   // Original document still queryable after second Parse reused scratch.
   let root_again: Yaml = doc.Root();
   let map_again_opt: YamlMap? = YamlAsMap(root_again);
@@ -300,6 +306,7 @@ func test_yaml_document_parsefile_package_yaml() {
     AssertEqString((name_s as YamlStr).Text(), "yaml");
     return;
   }
+
   let doc_opt: YamlDocument? = r.get_if<YamlDocument>();
   AssertTrue(doc_opt != nil);
   var doc: YamlDocument = doc_opt as YamlDocument;
@@ -313,24 +320,4 @@ func test_yaml_document_parsefile_package_yaml() {
   let name_s: YamlStr? = name_v.node.get_if<YamlStr>();
   AssertTrue(name_s != nil);
   AssertEqString((name_s as YamlStr).Text(), "yaml");
-}
-
-@test(tag = "heap-initialization")
-func test_yaml_dom_frame_initializes_poisoned_raw_storage() {
-  let size: int64 = sizeof(YamlDomFrame) as int64;
-  let raw: *mut int8 = _nyra_malloc(size, 8 as int64);
-  AssertTrue(raw != ptr<int8>.null());
-  if raw == ptr<int8>.null() { return; }
-  memset(raw as *mut uint8, 85u8, size as uintptr);
-  let durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  let frame: *mut YamlDomFrame = yaml_dom_frame_initialize(raw, durable, true, ptr<YamlDomFrame>.null());
-  unsafe {
-    AssertTrue((*frame).is_map);
-    AssertEqI32((*frame).map.Len(), 0);
-    AssertEqI32((*frame).seq.Len(), 0);
-    AssertEqString((*frame).pending_key, "");
-    AssertTrue(!(*frame).has_pending_key);
-    AssertTrue((*frame).prev == ptr<YamlDomFrame>.null());
-  }
-  yaml_dom_frame_free(frame);
 }

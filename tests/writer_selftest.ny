@@ -1,12 +1,16 @@
+// Copyright (c) 2026 tangxiangjiang
+// SPDX-License-Identifier: MIT
+
+part of YamlTests;
+
 /**
  * @brief YamlWriter / Accept / Emit tests (m_v0.18_p3).
  * @see docs/design/compiler/yaml.md §0.4 · §1.5
  */
-part of YamlTypes;
 
 @test
 func test_yaml_writer_emit_null() {
-  let n: Yaml = Yaml{ node: YamlNull{ _pad: 0 } };
+  let n: Yaml = Yaml{node: YamlNull{_pad: 0}};
   let text: string = YamlWriter.Emit(n);
   AssertTrue(text.Contains("null"));
 }
@@ -50,7 +54,7 @@ func test_yaml_writer_new_handler_get_string() {
 func test_yaml_accept_handler_events() {
   var st: YamlEvState = yaml_ev_state_new();
   let stp: *mut YamlEvState = cast<YamlEvState>.pointer(& mut st);
-  var rec: YamlEventRecorder = YamlEventRecorder{ st: stp };
+  var rec: YamlEventRecorder = YamlEventRecorder{st: stp};
   let node: Yaml = YamlParseTree("[true, null]");
   AssertTrue(node.Accept(rec));
   AssertTrue(st.kinds.Len() >= 4);

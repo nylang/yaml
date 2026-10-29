@@ -1,7 +1,11 @@
+// Copyright (c) 2026 tangxiangjiang
+// SPDX-License-Identifier: MIT
+
+part of YamlScanner;
+
 /**
  * @brief Scanner token tables and error-position tests (m_v0.7_p1 Work §3).
  */
-part of YamlTypes;
 
 func yaml_expect_tok(tok: YamlToken, kind: int32, lexeme: string, line: int32, column: int32) {
   AssertEqI32(tok.kind, kind);

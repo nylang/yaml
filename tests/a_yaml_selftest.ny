@@ -1,11 +1,15 @@
+// Copyright (c) 2026 tangxiangjiang
+// SPDX-License-Identifier: MIT
+
+part of YamlTests;
+
 /**
  * @brief Package-local smoke tests for `yaml` (ntest T0). Run via `nyra test`.
  */
-part of YamlTypes;
 
 @test
 func test_yaml_package_smoke() {
-  let n: Yaml = Yaml{ node: YamlNull{ _pad: 0 } };
+  let n: Yaml = Yaml{node: YamlNull{_pad: 0}};
   let _ok: bool = n.node.holds<YamlNull>();
   AssertTrue(_ok);
 }
@@ -238,7 +242,7 @@ func test_yaml_parse_core_int() {
 
 @test
 func test_yaml_error_and_stubs() {
-  let err: YamlError = YamlError{ line: 1, column: 2, message: "e" };
+  let err: YamlError = YamlError{line: 1, column: 2, message: "e"};
   AssertEqI32(err.line, 1);
   AssertEqI32(err.column, 2);
   var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
@@ -249,7 +253,7 @@ func test_yaml_error_and_stubs() {
     scratch
   );
   AssertTrue(pf.IsErr());
-  let n: Yaml = Yaml{ node: YamlNull{ _pad: 0 } };
+  let n: Yaml = Yaml{node: YamlNull{_pad: 0}};
   let out: string = YamlWriter.Emit(n);
   AssertTrue(out.Contains("null"));
 }
@@ -257,19 +261,19 @@ func test_yaml_error_and_stubs() {
 @test
 func test_yaml_map_seq_len_empty() {
   let empty_entries: Array<YamlMapEntry> = Array<YamlMapEntry>{};
-  let m: YamlMap = YamlMap{ entries: empty_entries };
+  let m: YamlMap = YamlMap{entries: empty_entries};
   AssertEqI32(m.Len(), 0);
-  var m2: YamlMap = YamlMap{ entries: Array<YamlMapEntry>{} };
-  let v: Yaml = Yaml{ node: YamlStr{ value: "x" } };
-  m2.entries.Push(YamlMapEntry{ key: "name", value: v });
+  var m2: YamlMap = YamlMap{entries: Array<YamlMapEntry>{}};
+  let v: Yaml = Yaml{node: YamlStr{value: "x"}};
+  m2.entries.Push(YamlMapEntry{key: "name", value: v});
   AssertEqI32(m2.Len(), 1);
-  let doc: Yaml = Yaml{ node: m2 };
+  let doc: Yaml = Yaml{node: m2};
   let map: YamlMap? = doc.node.get_if<YamlMap>();
   AssertTrue(map != nil);
   let mm: YamlMap = map as YamlMap;
   AssertEqI32(mm.Len(), 1);
   let empty_items: Array<Yaml> = Array<Yaml>{};
-  let s: YamlSeq = YamlSeq{ items: empty_items };
+  let s: YamlSeq = YamlSeq{items: empty_items};
   AssertEqI32(s.Len(), 0);
 }
 

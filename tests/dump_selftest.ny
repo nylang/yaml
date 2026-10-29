@@ -1,12 +1,17 @@
+// Copyright (c) 2026 tangxiangjiang
+// SPDX-License-Identifier: MIT
+
+part of YamlTests;
+
 /**
  * @brief Corpus dump helpers for m_v0.7_p4 (stripped when yaml is a nested dep).
  * @note Must stay `*_selftest.ny` so product consumers of `yaml` do not need `ntest`.
  * @note m_v0.18_p3: uses YamlDocument.Parse (free Parse deleted).
  */
-part of YamlTypes;
 
 func yaml_path_exists(path: string) -> bool {
   let f: File = File.New(path);
+
   return f.Exists();
 }
 
@@ -19,11 +24,16 @@ func yaml_resolve_testdata(rel: string) -> string {
     if yaml_path_exists(candidate) {
       return candidate;
     }
+
     let workspace: string = prefix.Concat("third_party/yaml/").Concat(rel);
-    if yaml_path_exists(workspace) { return workspace; }
+    if yaml_path_exists(workspace) {
+      return workspace;
+    }
+
     prefix = "../".Concat(prefix);
     depth = depth + 1;
   }
+
   return copy("");
 }
 
@@ -32,15 +42,18 @@ func yaml_read_testdata(rel: string) -> string {
   if path.length <= 0 {
     return copy("");
   }
+
   let f: File = File.New(path);
   let rd: Result<string, IoError> = f.ReadAsString();
   if rd.IsErr() {
     return copy("");
   }
+
   let t: string? = rd.get_if<string>();
   if t == nil {
     return copy("");
   }
+
   return copy(t as string);
 }
 
@@ -51,6 +64,7 @@ func yaml_parse_testdata(rel: string) -> Result<YamlDocument, YamlError> {
   if path.length <= 0 {
     return YamlDocument.ParseFile(rel, durable, scratch);
   }
+
   return YamlDocument.ParseFile(path, durable, scratch);
 }
 
@@ -60,6 +74,7 @@ func yaml_assert_dump_match(yaml_rel: string, dump_rel: string) {
     AssertTrueMsg(false, yaml_rel);
     return;
   }
+
   var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
   var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
   let pr: Result<YamlDocument, YamlError> = YamlDocument.Parse(src, durable, scratch);
@@ -72,6 +87,7 @@ func yaml_assert_dump_match(yaml_rel: string, dump_rel: string) {
     AssertTrueMsg(false, dump_rel);
     return;
   }
+
   AssertEqString(got, want);
 }
 
@@ -93,6 +109,7 @@ func yaml_assert_corpus_round_trip(yaml_rel: string) {
     AssertTrueMsg(false, yaml_rel);
     return;
   }
+
   var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
   var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
   let pr: Result<YamlDocument, YamlError> = YamlDocument.Parse(src, durable, scratch);

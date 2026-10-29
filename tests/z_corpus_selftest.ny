@@ -1,7 +1,11 @@
+// Copyright (c) 2026 tangxiangjiang
+// SPDX-License-Identifier: MIT
+
+part of YamlTests;
+
 /**
  * @brief Toolchain corpus vs Go yaml.v3 dumps + §1.5 Emit round-trip (m_v0.7_p4 / m_v0.18_p4).
  */
-part of YamlTypes;
 
 @test
 func test_yaml_dump_inline_flow_map() {
@@ -24,13 +28,19 @@ func test_yaml_dump_two_block_keys() {
 
 @test
 func test_yaml_corpus_kernel_package() {
-  yaml_assert_dump_match("tests/data/corpus/kernel/package.yaml", "tests/data/dumps/kernel_package.yaml.dump");
+  yaml_assert_dump_match(
+    "tests/data/corpus/kernel/package.yaml",
+    "tests/data/dumps/kernel_package.yaml.dump"
+  );
   yaml_assert_corpus_round_trip("tests/data/corpus/kernel/package.yaml");
 }
 
 @test
 func test_yaml_corpus_stdlib_package() {
-  yaml_assert_dump_match("tests/data/corpus/stdlib/package.yaml", "tests/data/dumps/stdlib_package.yaml.dump");
+  yaml_assert_dump_match(
+    "tests/data/corpus/stdlib/package.yaml",
+    "tests/data/dumps/stdlib_package.yaml.dump"
+  );
   yaml_assert_corpus_round_trip("tests/data/corpus/stdlib/package.yaml");
 }
 
@@ -42,19 +52,28 @@ func test_yaml_corpus_ntest_package() {
 
 @test
 func test_yaml_corpus_precompiled_lib() {
-  yaml_assert_dump_match("tests/data/corpus/precompiled/lib/package.yaml", "tests/data/dumps/precompiled_lib_package.yaml.dump");
+  yaml_assert_dump_match(
+    "tests/data/corpus/precompiled/lib/package.yaml",
+    "tests/data/dumps/precompiled_lib_package.yaml.dump"
+  );
   yaml_assert_corpus_round_trip("tests/data/corpus/precompiled/lib/package.yaml");
 }
 
 @test
 func test_yaml_corpus_precompiled_app() {
-  yaml_assert_dump_match("tests/data/corpus/precompiled/app/package.yaml", "tests/data/dumps/precompiled_app_package.yaml.dump");
+  yaml_assert_dump_match(
+    "tests/data/corpus/precompiled/app/package.yaml",
+    "tests/data/dumps/precompiled_app_package.yaml.dump"
+  );
   yaml_assert_corpus_round_trip("tests/data/corpus/precompiled/app/package.yaml");
 }
 
 @test
 func test_yaml_corpus_closed_lib() {
-  yaml_assert_dump_match("tests/data/corpus/precompiled/closed_lib/package.yaml", "tests/data/dumps/precompiled_closed_lib_package.yaml.dump");
+  yaml_assert_dump_match(
+    "tests/data/corpus/precompiled/closed_lib/package.yaml",
+    "tests/data/dumps/precompiled_closed_lib_package.yaml.dump"
+  );
   yaml_assert_corpus_round_trip("tests/data/corpus/precompiled/closed_lib/package.yaml");
 }
 

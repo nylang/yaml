@@ -44,3 +44,7 @@ SDK can move without rewriting publisher paths.
 ## License
 
 Licensed under the [MIT License](LICENSE).
+
+## Module architecture
+
+See [module responsibilities, ownership and dependency boundaries](ARCHITECTURE.md).
