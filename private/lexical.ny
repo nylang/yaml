@@ -5,44 +5,55 @@
 module YamlLexical;
 import "stdlib:stdlib.ny";
 
-pub static kYamlTokStreamEnd: int32 = 0;
+/**
+ * @brief One scanner token. `line` / `column` are 1-based (token start).
+ */
+pub struct YamlToken {
+  kind: int32;
+  lexeme: string;
+  line: int32;
+  column: int32;
+}
 
-pub static kYamlTokPlain: int32 = 1;
 
-pub static kYamlTokStr: int32 = 2;
+pub constexpr kYamlTokStreamEnd: int32 = 0;
 
-pub static kYamlTokInt: int32 = 3;
+pub constexpr kYamlTokPlain: int32 = 1;
 
-pub static kYamlTokBool: int32 = 4;
+pub constexpr kYamlTokStr: int32 = 2;
 
-pub static kYamlTokNull: int32 = 5;
+pub constexpr kYamlTokInt: int32 = 3;
 
-pub static kYamlTokColon: int32 = 6;
+pub constexpr kYamlTokBool: int32 = 4;
 
-pub static kYamlTokDash: int32 = 7;
+pub constexpr kYamlTokNull: int32 = 5;
 
-pub static kYamlTokLBrace: int32 = 8;
+pub constexpr kYamlTokColon: int32 = 6;
 
-pub static kYamlTokRBrace: int32 = 9;
+pub constexpr kYamlTokDash: int32 = 7;
 
-pub static kYamlTokLBracket: int32 = 10;
+pub constexpr kYamlTokLBrace: int32 = 8;
 
-pub static kYamlTokRBracket: int32 = 11;
+pub constexpr kYamlTokRBrace: int32 = 9;
 
-pub static kYamlTokComma: int32 = 12;
+pub constexpr kYamlTokLBracket: int32 = 10;
 
-pub static kYamlTokIndent: int32 = 13;
+pub constexpr kYamlTokRBracket: int32 = 11;
 
-pub static kYamlTokDedent: int32 = 14;
+pub constexpr kYamlTokComma: int32 = 12;
 
-func yaml_is_decimal_int(s: string) -> bool {
+pub constexpr kYamlTokIndent: int32 = 13;
+
+pub constexpr kYamlTokDedent: int32 = 14;
+
+static method(YamlToken) IsDecimalInteger(s: string) -> bool {
   let n: int32 = s.length;
   if n <= 0 {
     return false;
   }
 
   var i: int32 = 0;
-  if YamlByteAt(s, 0) == 45 {
+  if s.ByteAt(0) == 45 {
     if n == 1 {
       return false;
     }
@@ -51,7 +62,7 @@ func yaml_is_decimal_int(s: string) -> bool {
   }
 
   while i < n {
-    if !YamlIsDigit(YamlByteAt(s, i)) {
+    if !YamlToken.IsDigit(s.ByteAt(i)) {
       return false;
     }
 
@@ -65,7 +76,7 @@ func yaml_is_decimal_int(s: string) -> bool {
  * @brief Apply the scanner scalar rules before choosing a plain YAML spelling.
  * @returns The token kind assigned to this exact unquoted lexeme.
  */
-pub func YamlClassifyPlain(lexeme: string) -> int32 {
+pub static method(YamlToken) Classify(lexeme: string) -> int32 {
   if (lexeme == "~") {
     return kYamlTokNull;
   }
@@ -106,7 +117,7 @@ pub func YamlClassifyPlain(lexeme: string) -> int32 {
     return kYamlTokBool;
   }
 
-  if yaml_is_decimal_int(lexeme) {
+  if YamlToken.IsDecimalInteger(lexeme) {
     return kYamlTokInt;
   }
 
@@ -114,26 +125,10 @@ pub func YamlClassifyPlain(lexeme: string) -> int32 {
 }
 
 /**
- * @brief Read a YAML lexical source byte with an explicit bounds sentinel.
- * @returns A widened byte, or -1 outside the source range.
- */
-pub func YamlByteAt(s: string, i: int32) -> int32 {
-  if i < 0 {
-    return -1;
-  }
-
-  if i >= s.length {
-    return -1;
-  }
-
-  return (s[i] as int32) & 255;
-}
-
-/**
  * @brief Recognize ASCII decimal digits used by YAML scalar classification.
  * @returns True for bytes 0 through 9 in ASCII spelling.
  */
-pub func YamlIsDigit(b: int32) -> bool {
+pub static method(YamlToken) IsDigit(b: int32) -> bool {
   if b < 48 {
     return false;
   }

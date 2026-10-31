@@ -15,82 +15,22 @@ import "private/parse.ny";
  * @see docs/design/compiler/yaml.md §0.3–0.6
  */
 
-func yaml_reader_ok() -> Result<Unit, YamlError> {
-  let r: Result<Unit, YamlError> = UnitValue();
-
-  return r;
-}
-
-func yaml_reader_fail(line: int32, column: int32, message: string) -> Result<Unit, YamlError> {
-  var msg: string = message;
-  if message.length > 0 {
-    var out: string = string.Alloc(message.length);
-    memcpy((out.data as *mut uint8), message.data, message.length as uintptr);
-    msg = out;
-  }
-
-  let err: YamlError = YamlError{line: line, column: column, message: msg};
-  let r: Result<Unit, YamlError> = err;
-
-  return r;
-}
-
-func yaml_reader_io_kind(e: IoError) -> string {
-  if e == IoError.NotFound {
-    return "file not found";
-  }
-
-  if e == IoError.PermissionDenied {
-    return "permission denied";
-  }
-
-  if e == IoError.IsADirectory {
-    return "path is a directory";
-  }
-
-  if e == IoError.NotADirectory {
-    return "path is not a directory";
-  }
-
-  if e == IoError.InvalidArgument {
-    return "invalid path";
-  }
-
-  return "I/O error";
-}
-
 /**
  * @brief Copy `s` into `scratch`; return a view over the scratch bytes (not heap-owned).
  * @note Handler may observe scratch-backed strings; Document (p2) must copy into durable.
  */
-pub func YamlScratchCopy(scratch: Allocator, s: string) -> string {
-  if s.length <= 0 {
-    return YamlEmptyStr();
-  }
-
-  let n: uintptr = s.length as uintptr;
-  let p: *mut uint8 = scratch.Alloc(n);
-  if p == (ptr<uint8>.null()) {
-    return YamlEmptyStr();
-  }
-
-  memcpy(p, s.data as *const uint8, n);
-
-  return string.ViewFrom(p as *const int8, s.length);
-}
-
 // Publish child events in document order and stop immediately when the handler rejects an event.
 /**
  * @brief Walk a retained YAML tree and publish Handler events using caller scratch storage.
  * @returns False on Handler refusal; true after the node and all children were published.
  */
-pub func YamlPublishNode(node: Yaml, handler: YamlHandler, scratch: Allocator) -> bool {
-  if node.node.holds<YamlNull>() {
+pub method(Yaml) Publish(handler: YamlHandler, scratch: Allocator) -> bool {
+  if self.node.holds<YamlNull>() {
     return handler.Null();
   }
 
-  if node.node.holds<YamlBool>() {
-    let bv: YamlBool? = node.node.get_if<YamlBool>();
+  if self.node.holds<YamlBool>() {
+    let bv: YamlBool? = self.node.get_if<YamlBool>();
     if bv == nil {
       return handler.Null();
     }
@@ -100,8 +40,8 @@ pub func YamlPublishNode(node: Yaml, handler: YamlHandler, scratch: Allocator) -
     return handler.Bool(b.value);
   }
 
-  if node.node.holds<YamlInt>() {
-    let iv: YamlInt? = node.node.get_if<YamlInt>();
+  if self.node.holds<YamlInt>() {
+    let iv: YamlInt? = self.node.get_if<YamlInt>();
     if iv == nil {
       return handler.Null();
     }
@@ -111,14 +51,15 @@ pub func YamlPublishNode(node: Yaml, handler: YamlHandler, scratch: Allocator) -
     return handler.Int64(n.value);
   }
 
-  if node.node.holds<YamlStr>() {
-    let sv: YamlStr? = node.node.get_if<YamlStr>();
+  if self.node.holds<YamlStr>() {
+    let sv: YamlStr? = self.node.get_if<YamlStr>();
     if sv == nil {
       return handler.Null();
     }
 
     let s: YamlStr = sv as YamlStr;
-    let view: string = YamlScratchCopy(scratch, s.value);
+    let copied_view: string? = scratch.CopyStringView(s.value);
+    let view: string = copied_view != nil ? copied_view as string : "";
     if (s.value.length > 0) && (view.length <= 0) {
       return false;
     }
@@ -126,42 +67,43 @@ pub func YamlPublishNode(node: Yaml, handler: YamlHandler, scratch: Allocator) -
     return handler.String(view);
   }
 
-  if node.node.holds<YamlSeq>() {
-    let seq_opt: YamlSeq? = node.node.get_if<YamlSeq>();
+  if self.node.holds<YamlSeq>() {
+    let seq_opt: YamlSeq? = self.node.get_if<YamlSeq>();
     if seq_opt == nil {
       return handler.Null();
     }
 
     var seqv: YamlSeq = seq_opt as YamlSeq;
 
-    return yaml_publish_seq(seqv, handler, scratch);
+    return seqv.Publish(handler, scratch);
   }
 
-  if node.node.holds<YamlMap>() {
-    let map_opt: YamlMap? = node.node.get_if<YamlMap>();
+  if self.node.holds<YamlMap>() {
+    let map_opt: YamlMap? = self.node.get_if<YamlMap>();
     if map_opt == nil {
       return handler.Null();
     }
 
     var mapv: YamlMap = map_opt as YamlMap;
 
-    return yaml_publish_map(mapv, handler, scratch);
+    return mapv.Publish(handler, scratch);
   }
 
   return handler.Null();
 }
 
-func yaml_publish_map(mapv: YamlMap, handler: YamlHandler, scratch: Allocator) -> bool {
+method(YamlMap) Publish(handler: YamlHandler, scratch: Allocator) -> bool {
   if !handler.StartObject() {
     return false;
   }
 
-  let n: int32 = mapv.Len();
+  let n: int32 = self.Len();
   var i: int32 = 0;
   while i < n {
     unsafe {
-      let ep: *mut YamlMapEntry = &mut mapv.entries.buf[i];
-      let kview: string = YamlScratchCopy(scratch,(*ep).key);
+      let ep: *mut YamlMapEntry = &mut self.entries.buf[i];
+      let copied_kview: string? = scratch.CopyStringView((*ep).key);
+      let kview: string = copied_kview != nil ? copied_kview as string : "";
       if ((*ep).key.length > 0) && (kview.length <= 0) {
         return false;
       }
@@ -170,7 +112,7 @@ func yaml_publish_map(mapv: YamlMap, handler: YamlHandler, scratch: Allocator) -
         return false;
       }
 
-      if !YamlPublishNode((*ep).value, handler, scratch) {
+      if !((*ep).value).Publish(handler, scratch) {
         return false;
       }
     }
@@ -181,17 +123,17 @@ func yaml_publish_map(mapv: YamlMap, handler: YamlHandler, scratch: Allocator) -
   return handler.EndObject(n);
 }
 
-func yaml_publish_seq(seqv: YamlSeq, handler: YamlHandler, scratch: Allocator) -> bool {
+method(YamlSeq) Publish(handler: YamlHandler, scratch: Allocator) -> bool {
   if !handler.StartArray() {
     return false;
   }
 
-  let n: int32 = seqv.Len();
+  let n: int32 = self.Len();
   var i: int32 = 0;
   while i < n {
     unsafe {
-      let ip: *mut Yaml = &mut seqv.items.buf[i];
-      if !YamlPublishNode(*ip, handler, scratch) {
+      let ip: *mut Yaml = &mut self.items.buf[i];
+      if !(*ip).Publish(handler, scratch) {
         return false;
       }
     }
@@ -227,34 +169,34 @@ pub method(YamlReader) Parse(
   scratch: Allocator
 ) -> Result<Unit, YamlError> {
   // Touch scratch up front so MemStack/MemArena wiring is exercised even for empty docs.
-  let frame: *mut uint8 = scratch.Alloc(1 as uintptr);
+  let frame: *mut uint8 = scratch.Alloc(1up);
   if frame == (ptr<uint8>.null()) {
-    return yaml_reader_fail(1, 1, "scratch allocator exhausted");
+    return Err<Unit, YamlError>(YamlError.New(1, 1, "scratch allocator exhausted"));
   }
 
-  let parsed: Result<Yaml, YamlError> = YamlParseResult(text);
+  let parsed: Result<Yaml, YamlError> = Yaml.ParseSyntax(text);
   if parsed.IsErr() {
     let eo: YamlError? = parsed.get_if<YamlError>();
     if eo == nil {
-      return yaml_reader_fail(1, 1, "parse failed");
+      return Err<Unit, YamlError>(YamlError.New(1, 1, "parse failed"));
     }
 
     let e: YamlError = eo as YamlError;
 
-    return yaml_reader_fail(e.line, e.column, e.message);
+    return Err<Unit, YamlError>(YamlError.New(e.line, e.column, e.message));
   }
 
   let root_opt: Yaml? = parsed.get_if<Yaml>();
   if root_opt == nil {
-    return yaml_reader_fail(1, 1, "parse failed");
+    return Err<Unit, YamlError>(YamlError.New(1, 1, "parse failed"));
   }
 
   let root: Yaml = root_opt as Yaml;
-  if !YamlPublishNode(root, handler, scratch) {
-    return yaml_reader_fail(1, 1, "handler aborted");
+  if !root.Publish(handler, scratch) {
+    return Err<Unit, YamlError>(YamlError.New(1, 1, "handler aborted"));
   }
 
-  return yaml_reader_ok();
+  return Ok<Unit, YamlError>(UnitValue());
 }
 
 /**
@@ -272,17 +214,17 @@ pub method(YamlReader) ParseFile(
   if rd.IsErr() {
     let eo: IoError? = rd.get_if<IoError>();
     if eo == nil {
-      return yaml_reader_fail(0, 0, "I/O error reading YAML file: ".Concat(path));
+      return Err<Unit, YamlError>(YamlError.New(0, 0, "I/O error reading YAML file: ".Concat(path)));
     }
 
-    let msg: string = yaml_reader_io_kind(eo as IoError).Concat(" reading YAML file: ").Concat(path);
+    let msg: string = YamlError.IoDescription(eo as IoError).Concat(" reading YAML file: ").Concat(path);
 
-    return yaml_reader_fail(0, 0, msg);
+    return Err<Unit, YamlError>(YamlError.New(0, 0, msg));
   }
 
   let text_opt: string? = rd.get_if<string>();
   if text_opt == nil {
-    return yaml_reader_fail(0, 0, "I/O error reading YAML file: ".Concat(path));
+    return Err<Unit, YamlError>(YamlError.New(0, 0, "I/O error reading YAML file: ".Concat(path)));
   }
 
   let src: string = text_opt as string;

@@ -26,7 +26,7 @@ pub struct YamlWriter {
  * @returns `false` if any Handler method aborts.
  */
 pub method(Yaml) Accept(handler: YamlHandler) -> bool {
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0i64, 8i64);
   if self.node.holds<YamlNull>() {
     return handler.Null();
   }
@@ -60,7 +60,8 @@ pub method(Yaml) Accept(handler: YamlHandler) -> bool {
     }
 
     let s: YamlStr = sv as YamlStr;
-    let view: string = YamlScratchCopy(scratch, s.value);
+    let copied_view: string? = scratch.CopyStringView(s.value);
+    let view: string = copied_view != nil ? copied_view as string : "";
     if (s.value.length > 0) && (view.length <= 0) {
       return false;
     }
@@ -85,7 +86,7 @@ pub method(Yaml) Accept(handler: YamlHandler) -> bool {
       unsafe {
         let ip: *mut Yaml = &mut seqv.items.buf[i];
         // Child walk via free helper (not method(Yaml) self-pass).
-        if !YamlPublishNode(*ip, handler, scratch) {
+        if !(*ip).Publish(handler, scratch) {
           return false;
         }
       }
@@ -112,7 +113,8 @@ pub method(Yaml) Accept(handler: YamlHandler) -> bool {
     while i < n {
       unsafe {
         let ep: *mut YamlMapEntry = &mut mapv.entries.buf[i];
-        let kview: string = YamlScratchCopy(scratch,(*ep).key);
+        let copied_kview: string? = scratch.CopyStringView((*ep).key);
+        let kview: string = copied_kview != nil ? copied_kview as string : "";
         if ((*ep).key.length > 0) && (kview.length <= 0) {
           return false;
         }
@@ -121,7 +123,7 @@ pub method(Yaml) Accept(handler: YamlHandler) -> bool {
           return false;
         }
 
-        if !YamlPublishNode((*ep).value, handler, scratch) {
+        if !((*ep).value).Publish(handler, scratch) {
           return false;
         }
       }
@@ -141,21 +143,21 @@ pub method(Yaml) Accept(handler: YamlHandler) -> bool {
  *   default-state semantics.
  */
 pub static method(YamlWriter) New() -> YamlWriter {
-  let nbytes: int64 = 1024 as int64;
-  let raw: *mut int8 = _nyra_malloc(nbytes, 8 as int64);
+  let nbytes: int64 = 1024;
+  let raw: *mut int8 = _nyra_malloc(nbytes, 8i64);
   if raw == (ptr<int8>.null()) {
     return YamlWriter{st: ptr<int8>.null()};
   }
 
   // A recycled heap block can contain owned fields from unrelated values.
-  memset(raw as *mut uint8, 0 as uint8, nbytes as uintptr);
+  memset(raw as *mut uint8, 0u8, nbytes as uintptr);
   let sp: *mut YamlDomState = cast<YamlDomState>.pointer(raw);
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var durable: Allocator = Allocator.ProcessHeap(0i64, 8i64);
   unsafe {
     (*sp).durable = durable;
     (*sp).top = ptr<YamlDomFrame>.null();
     (*sp).depth = 0;
-    (*sp).root = YamlNullNode();
+    (*sp).root = Yaml.Null();
     (*sp).has_root = false;
     (*sp).failed = false;
   }
@@ -182,7 +184,7 @@ pub method(YamlWriter) GetString() -> string {
       return copy("null\n");
     }
 
-    return YamlEmitText((*sp).root);
+    return YamlEmitter.Emit((*sp).root);
   }
 }
 
@@ -218,7 +220,9 @@ pub method(YamlWriter) Null() -> bool {
 
   let sp: *mut YamlDomState = cast<YamlDomState>.pointer(self.st);
 
-  return yaml_dom_add_value(sp, YamlNullNode());
+  unsafe {
+    return (*sp).AddValue(Yaml.Null());
+  }
 }
 
 /**
@@ -233,7 +237,9 @@ pub method(YamlWriter) Bool(b: bool) -> bool {
 
   let sp: *mut YamlDomState = cast<YamlDomState>.pointer(self.st);
 
-  return yaml_dom_add_value(sp, YamlBoolNode(b));
+  unsafe {
+    return (*sp).AddValue(Yaml.FromBool(b));
+  }
 }
 
 /**
@@ -248,7 +254,9 @@ pub method(YamlWriter) Int64(v: int64) -> bool {
 
   let sp: *mut YamlDomState = cast<YamlDomState>.pointer(self.st);
 
-  return yaml_dom_add_value(sp, YamlIntNode(v));
+  unsafe {
+    return (*sp).AddValue(Yaml.FromInt(v));
+  }
 }
 
 /**
@@ -263,14 +271,14 @@ pub method(YamlWriter) String(s: string) -> bool {
 
   let sp: *mut YamlDomState = cast<YamlDomState>.pointer(self.st);
   unsafe {
-    let heap_s: string = yaml_durable_copy((*sp).durable, s);
+    let heap_s: string = (*sp).CopyDurable(s);
     if (s.length > 0) && (heap_s.length <= 0) {
       (*sp).failed = true;
 
       return false;
     }
 
-    return yaml_dom_add_value(sp, YamlStrNode(heap_s));
+    return (*sp).AddValue(Yaml.FromStr(heap_s));
   }
 }
 
@@ -286,7 +294,9 @@ pub method(YamlWriter) StartObject() -> bool {
 
   let sp: *mut YamlDomState = cast<YamlDomState>.pointer(self.st);
 
-  return yaml_dom_push_map(sp);
+  unsafe {
+    return (*sp).PushMap();
+  }
 }
 
 /**
@@ -314,7 +324,7 @@ pub method(YamlWriter) Key(k: string) -> bool {
       return false;
     }
 
-    let heap_k: string = yaml_durable_copy((*sp).durable, k);
+    let heap_k: string = (*sp).CopyDurable(k);
     if (k.length > 0) && (heap_k.length <= 0) {
       (*sp).failed = true;
 
@@ -341,7 +351,9 @@ pub method(YamlWriter) EndObject(member_count: int32) -> bool {
 
   let sp: *mut YamlDomState = cast<YamlDomState>.pointer(self.st);
 
-  return yaml_dom_end_map(sp);
+  unsafe {
+    return (*sp).EndMap();
+  }
 }
 
 /**
@@ -356,7 +368,9 @@ pub method(YamlWriter) StartArray() -> bool {
 
   let sp: *mut YamlDomState = cast<YamlDomState>.pointer(self.st);
 
-  return yaml_dom_push_seq(sp);
+  unsafe {
+    return (*sp).PushSeq();
+  }
 }
 
 /**
@@ -372,5 +386,7 @@ pub method(YamlWriter) EndArray(element_count: int32) -> bool {
 
   let sp: *mut YamlDomState = cast<YamlDomState>.pointer(self.st);
 
-  return yaml_dom_end_seq(sp);
+  unsafe {
+    return (*sp).EndSeq();
+  }
 }

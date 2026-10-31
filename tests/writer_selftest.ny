@@ -17,17 +17,17 @@ func test_yaml_writer_emit_null() {
 
 @test
 func test_yaml_writer_accept_roundtrip_name() {
-  let src: Yaml = YamlParseTree("name: x");
+  let src: Yaml = Yaml.ParseOrNull("name: x");
   let text: string = YamlWriter.Emit(src);
   AssertTrue(text.Contains("name:"));
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   let r: Result<YamlDocument, YamlError> = YamlDocument.Parse(text, durable, scratch);
   AssertTrue(r.IsOk());
   let doc_opt: YamlDocument? = r.get_if<YamlDocument>();
   AssertTrue(doc_opt != nil);
   var doc: YamlDocument = doc_opt as YamlDocument;
-  let map_opt: YamlMap? = YamlAsMap(doc.Root());
+  let map_opt: YamlMap? = (doc.Root()).AsMap();
   AssertTrue(map_opt != nil);
   var mapv: YamlMap = map_opt as YamlMap;
   let name_node: Yaml? = mapv.Get("name");
@@ -52,10 +52,10 @@ func test_yaml_writer_new_handler_get_string() {
 
 @test
 func test_yaml_accept_handler_events() {
-  var st: YamlEvState = yaml_ev_state_new();
+  var st: YamlEvState = YamlEvState.New();
   let stp: *mut YamlEvState = cast<YamlEvState>.pointer(& mut st);
   var rec: YamlEventRecorder = YamlEventRecorder{st: stp};
-  let node: Yaml = YamlParseTree("[true, null]");
+  let node: Yaml = Yaml.ParseOrNull("[true, null]");
   AssertTrue(node.Accept(rec));
   AssertTrue(st.kinds.Len() >= 4);
 }

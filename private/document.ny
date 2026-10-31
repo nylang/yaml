@@ -52,64 +52,19 @@ struct YamlDomBuilder implements YamlHandler {
   st: *mut YamlDomState;
 }
 
-func yaml_doc_fail(line: int32, column: int32, message: string) -> Result<YamlDocument, YamlError> {
-  var msg: string = message;
-  if message.length > 0 {
-    var out: string = string.Alloc(message.length);
-    memcpy((out.data as *mut uint8), message.data, message.length as uintptr);
-    msg = out;
-  }
-
-  let err: YamlError = YamlError{line: line, column: column, message: msg};
-
-  return Err<YamlDocument, YamlError>(err);
-}
-
-func yaml_dom_fail() -> Result<YamlDocument, YamlError> {
-  return yaml_doc_fail(1, 1, "document build failed");
-}
-
-func yaml_doc_ok(doc: YamlDocument) -> Result<YamlDocument, YamlError> {
-  return Ok<YamlDocument, YamlError>(doc);
-}
-
-func yaml_doc_io_kind(e: IoError) -> string {
-  if e == IoError.NotFound {
-    return "file not found";
-  }
-
-  if e == IoError.PermissionDenied {
-    return "permission denied";
-  }
-
-  if e == IoError.IsADirectory {
-    return "path is a directory";
-  }
-
-  if e == IoError.NotADirectory {
-    return "path is not a directory";
-  }
-
-  if e == IoError.InvalidArgument {
-    return "invalid path";
-  }
-
-  return "I/O error";
-}
-
 /**
  * @brief Copy `s` into `durable` and adopt as a heap string (survives scratch Reset).
  * @note Requires process-heap durable (`CreateAllocator`); drop frees via `_nyra_*`.
  */
-func yaml_durable_copy(durable: Allocator, s: string) -> string {
+method(YamlDomState) CopyDurable(s: string) -> string {
   if s.length <= 0 {
-    return YamlEmptyStr();
+    return "";
   }
 
   let n: uintptr = s.length as uintptr;
-  let p: *mut uint8 = durable.Alloc(n);
+  let p: *mut uint8 = self.durable.Alloc(n);
   if p == (ptr<uint8>.null()) {
-    return YamlEmptyStr();
+    return "";
   }
 
   memcpy(p, s.data as *const uint8, n);
@@ -117,49 +72,49 @@ func yaml_durable_copy(durable: Allocator, s: string) -> string {
   return string.AdoptFrom(p as *const int8, s.length);
 }
 
-func yaml_dom_state_new(durable: Allocator) -> YamlDomState {
+static method(YamlDomState) New(durable: Allocator) -> YamlDomState {
   return YamlDomState{
     durable: durable,
     top: ptr<YamlDomFrame>.null(),
     depth: 0,
-    root: YamlNullNode(),
+    root: Yaml.Null(),
     has_root: false,
     failed: false
   };
 }
 
-func yaml_dom_empty_map(durable: Allocator) -> YamlMap {
+static method(YamlMap) WithAllocator(durable: Allocator) -> YamlMap {
   return YamlMap{entries: Array<YamlMapEntry>.NewWithAllocator(durable)};
 }
 
-func yaml_dom_empty_seq(durable: Allocator) -> YamlSeq {
+static method(YamlSeq) WithAllocator(durable: Allocator) -> YamlSeq {
   return YamlSeq{items: Array<Yaml>.NewWithAllocator(durable)};
 }
 
-func yaml_dom_frame_alloc(
+static method(YamlDomFrame) Allocate(
   durable: Allocator,
   is_map: bool,
   prev: *mut YamlDomFrame
 ) -> *mut YamlDomFrame {
   let nbytes: int64 = sizeof(YamlDomFrame) as int64;
-  let raw: *mut int8 = _nyra_malloc(nbytes, 8 as int64);
+  let raw: *mut int8 = _nyra_malloc(nbytes, 8i64);
   if raw == (ptr<int8>.null()) {
     return ptr<YamlDomFrame>.null();
   }
 
-  return yaml_dom_frame_initialize(raw, durable, is_map, prev);
+  return YamlDomFrame.Initialize(raw, durable, is_map, prev);
 }
 
-func yaml_dom_frame_initialize(raw: *mut int8, durable: Allocator, is_map: bool,
+static method(YamlDomFrame) Initialize(raw: *mut int8, durable: Allocator, is_map: bool,
   prev: *mut YamlDomFrame) -> *mut YamlDomFrame {
   // Owned field assignment drops the previous value; raw heap bytes have none.
-  memset(raw as *mut uint8, 0 as uint8, sizeof(YamlDomFrame) as uintptr);
+  memset(raw as *mut uint8, 0u8, sizeof(YamlDomFrame) as uintptr);
   let fp: *mut YamlDomFrame = cast<YamlDomFrame>.pointer(raw);
   unsafe {
     (*fp).is_map = is_map;
-    (*fp).map = yaml_dom_empty_map(durable);
-    (*fp).seq = yaml_dom_empty_seq(durable);
-    (*fp).pending_key = YamlEmptyStr();
+    (*fp).map = YamlMap.WithAllocator(durable);
+    (*fp).seq = YamlSeq.WithAllocator(durable);
+    (*fp).pending_key = "";
     (*fp).has_pending_key = false;
     (*fp).prev = prev;
   }
@@ -167,13 +122,13 @@ func yaml_dom_frame_initialize(raw: *mut int8, durable: Allocator, is_map: bool,
   return fp;
 }
 
-func yaml_dom_frame_free(fp: *mut YamlDomFrame) -> void {
+static method(YamlDomFrame) Release(fp: *mut YamlDomFrame) -> void {
   if fp == (ptr<YamlDomFrame>.null()) {
     return;
   }
 
   unsafe {
-    (*fp).pending_key = YamlEmptyStr();
+    (*fp).pending_key = "";
     (*fp).map = YamlMap{entries: Array<YamlMapEntry>{}};
     (*fp).seq = YamlSeq{items: Array<Yaml>{}};
     (*fp).prev = ptr<YamlDomFrame>.null();
@@ -182,75 +137,75 @@ func yaml_dom_frame_free(fp: *mut YamlDomFrame) -> void {
   _nyra_free(cast<int8>.pointer(fp));
 }
 
-func yaml_dom_clear_stack(st: *mut YamlDomState) -> void {
+method(YamlDomState) ClearStack() -> void {
   unsafe {
-    var cur: *mut YamlDomFrame = (*st).top;
+    var cur: *mut YamlDomFrame = self.top;
     while cur != (ptr<YamlDomFrame>.null()) {
       let prev: *mut YamlDomFrame = (*cur).prev;
-      yaml_dom_frame_free(cur);
+      YamlDomFrame.Release(cur);
       cur = prev;
     }
 
-    (*st).top = ptr<YamlDomFrame>.null();
-    (*st).depth = 0;
+    self.top = ptr<YamlDomFrame>.null();
+    self.depth = 0;
   }
 }
 
-func yaml_dom_push_map(st: *mut YamlDomState) -> bool {
+method(YamlDomState) PushMap() -> bool {
   unsafe {
-    let fp: *mut YamlDomFrame = yaml_dom_frame_alloc((*st).durable, true,(*st).top);
+    let fp: *mut YamlDomFrame = YamlDomFrame.Allocate(self.durable, true,self.top);
     if fp == (ptr<YamlDomFrame>.null()) {
-      (*st).failed = true;
+      self.failed = true;
 
       return false;
     }
 
-    (*st).top = fp;
-    (*st).depth = (*st).depth + 1;
-  }
-
-  return true;
-}
-
-func yaml_dom_push_seq(st: *mut YamlDomState) -> bool {
-  unsafe {
-    let fp: *mut YamlDomFrame = yaml_dom_frame_alloc((*st).durable, false,(*st).top);
-    if fp == (ptr<YamlDomFrame>.null()) {
-      (*st).failed = true;
-
-      return false;
-    }
-
-    (*st).top = fp;
-    (*st).depth = (*st).depth + 1;
+    self.top = fp;
+    self.depth = self.depth + 1;
   }
 
   return true;
 }
 
-func yaml_dom_add_value(st: *mut YamlDomState, v: Yaml) -> bool {
+method(YamlDomState) PushSeq() -> bool {
   unsafe {
-    if (*st).failed {
+    let fp: *mut YamlDomFrame = YamlDomFrame.Allocate(self.durable, false,self.top);
+    if fp == (ptr<YamlDomFrame>.null()) {
+      self.failed = true;
+
       return false;
     }
 
-    let fp: *mut YamlDomFrame = (*st).top;
+    self.top = fp;
+    self.depth = self.depth + 1;
+  }
+
+  return true;
+}
+
+method(YamlDomState) AddValue(v: Yaml) -> bool {
+  unsafe {
+    if self.failed {
+      return false;
+    }
+
+    let fp: *mut YamlDomFrame = self.top;
     if fp == (ptr<YamlDomFrame>.null()) {
-      (*st).root = v;
-      (*st).has_root = true;
+      self.root = v;
+      self.has_root = true;
 
       return true;
     }
 
     if (*fp).is_map {
       if ! (*fp).has_pending_key {
-        (*st).failed = true;
+        self.failed = true;
 
         return false;
       }
 
       let key: string = (*fp).pending_key;
-      (*fp).pending_key = YamlEmptyStr();
+      (*fp).pending_key = "";
       (*fp).has_pending_key = false;
       (*fp).map.entries.Push(YamlMapEntry{key: key, value: v});
 
@@ -263,83 +218,91 @@ func yaml_dom_add_value(st: *mut YamlDomState, v: Yaml) -> bool {
   }
 }
 
-func yaml_dom_end_map(st: *mut YamlDomState) -> bool {
+method(YamlDomState) EndMap() -> bool {
   unsafe {
-    let fp: *mut YamlDomFrame = (*st).top;
+    let fp: *mut YamlDomFrame = self.top;
     if fp == (ptr<YamlDomFrame>.null()) {
-      (*st).failed = true;
+      self.failed = true;
 
       return false;
     }
 
     if ! (*fp).is_map {
-      (*st).failed = true;
+      self.failed = true;
 
       return false;
     }
 
     let node: Yaml = Yaml{node:(*fp).map};
     (*fp).map = YamlMap{entries: Array<YamlMapEntry>{}};
-    (*st).top = (*fp).prev;
-    (*st).depth = (*st).depth - 1;
-    yaml_dom_frame_free(fp);
+    self.top = (*fp).prev;
+    self.depth = self.depth - 1;
+    YamlDomFrame.Release(fp);
 
-    return yaml_dom_add_value(st, node);
+    return self.AddValue(node);
   }
 }
 
-func yaml_dom_end_seq(st: *mut YamlDomState) -> bool {
+method(YamlDomState) EndSeq() -> bool {
   unsafe {
-    let fp: *mut YamlDomFrame = (*st).top;
+    let fp: *mut YamlDomFrame = self.top;
     if fp == (ptr<YamlDomFrame>.null()) {
-      (*st).failed = true;
+      self.failed = true;
 
       return false;
     }
 
     if (*fp).is_map {
-      (*st).failed = true;
+      self.failed = true;
 
       return false;
     }
 
     let node: Yaml = Yaml{node:(*fp).seq};
     (*fp).seq = YamlSeq{items: Array<Yaml>{}};
-    (*st).top = (*fp).prev;
-    (*st).depth = (*st).depth - 1;
-    yaml_dom_frame_free(fp);
+    self.top = (*fp).prev;
+    self.depth = self.depth - 1;
+    YamlDomFrame.Release(fp);
 
-    return yaml_dom_add_value(st, node);
+    return self.AddValue(node);
   }
 }
 
 method(YamlDomBuilder) Null() -> bool {
-  return yaml_dom_add_value(self.st, YamlNullNode());
+  unsafe {
+    return (*self.st).AddValue(Yaml.Null());
+  }
 }
 
 method(YamlDomBuilder) Bool(b: bool) -> bool {
-  return yaml_dom_add_value(self.st, YamlBoolNode(b));
+  unsafe {
+    return (*self.st).AddValue(Yaml.FromBool(b));
+  }
 }
 
 method(YamlDomBuilder) Int64(v: int64) -> bool {
-  return yaml_dom_add_value(self.st, YamlIntNode(v));
+  unsafe {
+    return (*self.st).AddValue(Yaml.FromInt(v));
+  }
 }
 
 method(YamlDomBuilder) String(s: string) -> bool {
   unsafe {
-    let heap_s: string = yaml_durable_copy((*self.st).durable, s);
+    let heap_s: string = (*self.st).CopyDurable(s);
     if (s.length > 0) && (heap_s.length <= 0) {
       (*self.st).failed = true;
 
       return false;
     }
 
-    return yaml_dom_add_value(self.st, YamlStrNode(heap_s));
+    return (*self.st).AddValue(Yaml.FromStr(heap_s));
   }
 }
 
 method(YamlDomBuilder) StartObject() -> bool {
-  return yaml_dom_push_map(self.st);
+  unsafe {
+    return (*self.st).PushMap();
+  }
 }
 
 method(YamlDomBuilder) Key(k: string) -> bool {
@@ -357,7 +320,7 @@ method(YamlDomBuilder) Key(k: string) -> bool {
       return false;
     }
 
-    let heap_k: string = yaml_durable_copy((*self.st).durable, k);
+    let heap_k: string = (*self.st).CopyDurable(k);
     if (k.length > 0) && (heap_k.length <= 0) {
       (*self.st).failed = true;
 
@@ -374,17 +337,23 @@ method(YamlDomBuilder) Key(k: string) -> bool {
 method(YamlDomBuilder) EndObject(member_count: int32) -> bool {
   let _mc: int32 = member_count;
 
-  return yaml_dom_end_map(self.st);
+  unsafe {
+    return (*self.st).EndMap();
+  }
 }
 
 method(YamlDomBuilder) StartArray() -> bool {
-  return yaml_dom_push_seq(self.st);
+  unsafe {
+    return (*self.st).PushSeq();
+  }
 }
 
 method(YamlDomBuilder) EndArray(element_count: int32) -> bool {
   let _ec: int32 = element_count;
 
-  return yaml_dom_end_seq(self.st);
+  unsafe {
+    return (*self.st).EndSeq();
+  }
 }
 
 /**
@@ -402,46 +371,46 @@ pub static method(YamlDocument) Parse(
   durable: Allocator,
   scratch: Allocator
 ) -> Result<YamlDocument, YamlError> {
-  let frame: *mut uint8 = durable.Alloc(1 as uintptr);
+  let frame: *mut uint8 = durable.Alloc(1up);
   if frame == (ptr<uint8>.null()) {
-    return yaml_doc_fail(1, 1, "durable allocator exhausted");
+    return Err<YamlDocument, YamlError>(YamlError.New(1, 1, "durable allocator exhausted"));
   }
 
-  var state: YamlDomState = yaml_dom_state_new(durable);
+  var state: YamlDomState = YamlDomState.New(durable);
   let stp: *mut YamlDomState = cast<YamlDomState>.pointer(& mut state);
   var builder: YamlDomBuilder = YamlDomBuilder{st: stp};
   var reader: YamlReader = YamlReader.New();
   let r: Result<Unit, YamlError> = reader.Parse(text, builder, scratch);
   if r.IsErr() {
-    yaml_dom_clear_stack(stp);
+    state.ClearStack();
     let eo: YamlError? = r.get_if<YamlError>();
     if eo == nil {
-      return yaml_doc_fail(1, 1, "parse failed");
+      return Err<YamlDocument, YamlError>(YamlError.New(1, 1, "parse failed"));
     }
 
     let e: YamlError = eo as YamlError;
 
-    return yaml_doc_fail(e.line, e.column, e.message);
+    return Err<YamlDocument, YamlError>(YamlError.New(e.line, e.column, e.message));
   }
 
   unsafe {
     if (*stp).failed || ! (*stp).has_root {
-      yaml_dom_clear_stack(stp);
+      state.ClearStack();
 
-      return yaml_dom_fail();
+      return Err<YamlDocument, YamlError>(YamlError.New(1, 1, "document build failed"));
     }
 
     if (*stp).depth != 0 {
-      yaml_dom_clear_stack(stp);
+      state.ClearStack();
 
-      return yaml_dom_fail();
+      return Err<YamlDocument, YamlError>(YamlError.New(1, 1, "document build failed"));
     }
 
     let doc: YamlDocument = YamlDocument{root:(*stp).root};
     (*stp).has_root = false;
-    (*stp).root = YamlNullNode();
+    (*stp).root = Yaml.Null();
 
-    return yaml_doc_ok(doc);
+    return Ok<YamlDocument, YamlError>(doc);
   }
 }
 
@@ -461,17 +430,17 @@ pub static method(YamlDocument) ParseFile(
   if rd.IsErr() {
     let eo: IoError? = rd.get_if<IoError>();
     if eo == nil {
-      return yaml_doc_fail(0, 0, "I/O error reading YAML file: ".Concat(path));
+      return Err<YamlDocument, YamlError>(YamlError.New(0, 0, "I/O error reading YAML file: ".Concat(path)));
     }
 
-    let msg: string = yaml_doc_io_kind(eo as IoError).Concat(" reading YAML file: ").Concat(path);
+    let msg: string = YamlError.IoDescription(eo as IoError).Concat(" reading YAML file: ").Concat(path);
 
-    return yaml_doc_fail(0, 0, msg);
+    return Err<YamlDocument, YamlError>(YamlError.New(0, 0, msg));
   }
 
   let text_opt: string? = rd.get_if<string>();
   if text_opt == nil {
-    return yaml_doc_fail(0, 0, "I/O error reading YAML file: ".Concat(path));
+    return Err<YamlDocument, YamlError>(YamlError.New(0, 0, "I/O error reading YAML file: ".Concat(path)));
   }
 
   let src: string = text_opt as string;

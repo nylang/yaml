@@ -33,13 +33,13 @@ method(YamlDumper) PutBool(v: bool) -> void {
 
 method(YamlDumper) PutInt(v: int64) -> void {
   self.buf.Append("{\"t\":\"int\",\"v\":");
-  self.buf.Append(YamlI64Text(v));
+  self.buf.Append(v.ToString());
   self.buf.Append("}");
 }
 
 method(YamlDumper) PutStr(s: string) -> void {
   self.buf.Append("{\"t\":\"str\",\"v\":");
-  self.buf.Append(YamlEmitQuote(s));
+  self.buf.Append(YamlStr.Quote(s));
   self.buf.Append("}");
 }
 
@@ -164,7 +164,7 @@ method(YamlDumper) DumpMap(mapv: YamlMap) -> void {
     self.buf.Append("{\"k\":");
     unsafe {
       let ep: *mut YamlMapEntry = &mut mapv.entries.buf[i];
-      self.buf.Append(YamlEmitQuote((*ep).key));
+      self.buf.Append(YamlStr.Quote((*ep).key));
       self.buf.Append(",\"v\":");
       self.Dump((*ep).value);
     }
@@ -178,10 +178,11 @@ method(YamlDumper) DumpMap(mapv: YamlMap) -> void {
 
 /**
  * @brief One-line JSON-like dump plus trailing newline (matches Go yamlcorpus dumps).
+ * @returns Language-owned diagnostic text followed by one newline.
  */
-pub func YamlCanonicalDump(node: Yaml) -> string {
+pub method(Yaml) CanonicalDump() -> string {
   var d: YamlDumper = YamlDumper{buf: StringBuffer.NewWithCapacity(64)};
-  d.Dump(node);
+  d.Dump(self);
   d.buf.Append("\n");
 
   return d.buf.Take();

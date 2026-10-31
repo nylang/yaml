@@ -5,15 +5,14 @@ part of YamlTests;
 
 /**
  * @brief YamlDocument build / query / durable-vs-scratch ownership tests (m_v0.18_p2).
- * @note MemStack/MemArena scratch helpers: `yaml_scratch_from_stack` / `yaml_scratch_from_arena`
- *   (defined in `reader_selftest.ny`, same YamlTypes module).
+ * @note Scratch strategy views use kernel MemStack.AsAllocator / MemArena.AsAllocator.
  * @see docs/design/compiler/yaml.md §0.5–0.6
  */
 
 @test
 func test_yaml_document_empty_null_root() {
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   let r: Result<YamlDocument, YamlError> = YamlDocument.Parse("", durable, scratch);
   AssertTrue(r.IsOk());
   let doc_opt: YamlDocument? = r.get_if<YamlDocument>();
@@ -26,15 +25,15 @@ func test_yaml_document_empty_null_root() {
 
 @test
 func test_yaml_document_query_map_name() {
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   let r: Result<YamlDocument, YamlError> = YamlDocument.Parse("name: x", durable, scratch);
   AssertTrue(r.IsOk());
   let doc_opt: YamlDocument? = r.get_if<YamlDocument>();
   AssertTrue(doc_opt != nil);
   var doc: YamlDocument = doc_opt as YamlDocument;
   let root: Yaml = doc.Root();
-  let map_opt: YamlMap? = YamlAsMap(root);
+  let map_opt: YamlMap? = root.AsMap();
   AssertTrue(map_opt != nil);
   var mapv: YamlMap = map_opt as YamlMap;
   AssertEqI32(mapv.Len(), 1);
@@ -54,7 +53,7 @@ func test_yaml_document_query_map_name() {
   let doc2_opt: YamlDocument? = r2.get_if<YamlDocument>();
   AssertTrue(doc2_opt != nil);
   var doc2: YamlDocument = doc2_opt as YamlDocument;
-  let map2_opt: YamlMap? = YamlAsMap(doc2.Root());
+  let map2_opt: YamlMap? = (doc2.Root()).AsMap();
   AssertTrue(map2_opt != nil);
   var map2: YamlMap = map2_opt as YamlMap;
   let name_node: Yaml? = map2.Get("name");
@@ -68,8 +67,8 @@ func test_yaml_document_query_map_name() {
 
 @test
 func test_yaml_document_query_seq_scalars() {
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   let r: Result<YamlDocument, YamlError> = YamlDocument.Parse(
     "[true, false, null, 42, hi]",
     durable,
@@ -80,7 +79,7 @@ func test_yaml_document_query_seq_scalars() {
   AssertTrue(doc_opt != nil);
   var doc: YamlDocument = doc_opt as YamlDocument;
   let root: Yaml = doc.Root();
-  let seq_opt: YamlSeq? = YamlAsSeq(root);
+  let seq_opt: YamlSeq? = root.AsSeq();
   AssertTrue(seq_opt != nil);
   var seqv: YamlSeq = seq_opt as YamlSeq;
   AssertEqI32(seqv.Len(), 5);
@@ -104,7 +103,7 @@ func test_yaml_document_query_seq_scalars() {
   let i3: Yaml? = seqv.Get(3);
   AssertTrue(i3 != nil);
   let v3: Yaml = i3 as Yaml;
-  let iv: int64? = YamlAsInt(v3);
+  let iv: int64? = v3.AsInt();
   AssertTrue(iv != nil);
   AssertEqI64(iv as int64, 42 as int64);
   let yi_opt: YamlInt? = v3.node.get_if<YamlInt>();
@@ -124,8 +123,8 @@ func test_yaml_document_query_seq_scalars() {
 
 @test
 func test_yaml_document_query_nested_map() {
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   let r: Result<YamlDocument, YamlError> = YamlDocument.Parse(
     "dependencies:\n  stdlib:\n    path: ../stdlib\n",
     durable,
@@ -136,17 +135,17 @@ func test_yaml_document_query_nested_map() {
   AssertTrue(doc_opt != nil);
   var doc: YamlDocument = doc_opt as YamlDocument;
   let root: Yaml = doc.Root();
-  let map_opt: YamlMap? = YamlAsMap(root);
+  let map_opt: YamlMap? = root.AsMap();
   AssertTrue(map_opt != nil);
   var mapv: YamlMap = map_opt as YamlMap;
   let deps_n: Yaml? = mapv.Get("dependencies");
   AssertTrue(deps_n != nil);
-  let deps_map: YamlMap? = YamlAsMap(deps_n as Yaml);
+  let deps_map: YamlMap? = (deps_n as Yaml).AsMap();
   AssertTrue(deps_map != nil);
   var dm: YamlMap = deps_map as YamlMap;
   let std_n: Yaml? = dm.Get("stdlib");
   AssertTrue(std_n != nil);
-  let std_map: YamlMap? = YamlAsMap(std_n as Yaml);
+  let std_map: YamlMap? = (std_n as Yaml).AsMap();
   AssertTrue(std_map != nil);
   var sm: YamlMap = std_map as YamlMap;
   let path_n: Yaml? = sm.Get("path");
@@ -159,8 +158,8 @@ func test_yaml_document_query_nested_map() {
 
 @test
 func test_yaml_document_parse_error() {
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   let r: Result<YamlDocument, YamlError> = YamlDocument.Parse("x: &a 1\ny: *a\n", durable, scratch);
   AssertTrue(r.IsErr());
   let eo: YamlError? = r.get_if<YamlError>();
@@ -176,9 +175,9 @@ func test_yaml_document_memstack_scratch_reset_durable() {
   AssertTrue(chunk != (ptr<int8>.null()));
   var stack: MemStack = MemStack{};
   stack.Init(chunk as *mut uint8, 8192 as uintptr);
-  let scratch: Allocator = yaml_scratch_from_stack(stack);
+  let scratch: Allocator = stack.AsAllocator();
   let mark: uintptr = stack.Mark();
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
 
   let r: Result<YamlDocument, YamlError> = YamlDocument.Parse("a: 1\nb: two\n", durable, scratch);
   AssertTrue(r.IsOk());
@@ -189,7 +188,7 @@ func test_yaml_document_memstack_scratch_reset_durable() {
   stack.Reset(mark);
 
   let root: Yaml = doc.Root();
-  let map_opt: YamlMap? = YamlAsMap(root);
+  let map_opt: YamlMap? = root.AsMap();
   AssertTrue(map_opt != nil);
   var mapv: YamlMap = map_opt as YamlMap;
   AssertEqI32(mapv.Len(), 2);
@@ -207,7 +206,7 @@ func test_yaml_document_memstack_scratch_reset_durable() {
   AssertEqString((sb as YamlStr).Text(), "two");
   let va: Yaml? = mapv.Get("a");
   AssertTrue(va != nil);
-  let ia: int64? = YamlAsInt(va as Yaml);
+  let ia: int64? = (va as Yaml).AsInt();
   AssertTrue(ia != nil);
   AssertEqI64(ia as int64, 1 as int64);
   // Scratch reusable after Reset; Document still valid.
@@ -217,7 +216,7 @@ func test_yaml_document_memstack_scratch_reset_durable() {
   AssertTrue(doc2_opt != nil);
   var doc2: YamlDocument = doc2_opt as YamlDocument;
   let root2: Yaml = doc2.Root();
-  let m2_opt: YamlMap? = YamlAsMap(root2);
+  let m2_opt: YamlMap? = root2.AsMap();
   AssertTrue(m2_opt != nil);
   var m2: YamlMap = m2_opt as YamlMap;
   let xv: Yaml? = m2.Get("x");
@@ -228,7 +227,7 @@ func test_yaml_document_memstack_scratch_reset_durable() {
   AssertEqString((xs as YamlStr).Text(), "y");
   // Original document still queryable after second Parse reused scratch.
   let root_again: Yaml = doc.Root();
-  let map_again_opt: YamlMap? = YamlAsMap(root_again);
+  let map_again_opt: YamlMap? = root_again.AsMap();
   AssertTrue(map_again_opt != nil);
   var map_again: YamlMap = map_again_opt as YamlMap;
   let k_again: string? = map_again.KeyAt(0);
@@ -244,8 +243,8 @@ func test_yaml_document_memarena_scratch_reset_durable() {
   AssertTrue(chunk != (ptr<int8>.null()));
   var arena: MemArena = MemArena{};
   arena.Init(chunk as *mut uint8, 8192 as uintptr);
-  let scratch: Allocator = yaml_scratch_from_arena(arena);
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  let scratch: Allocator = arena.AsAllocator();
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
 
   let r: Result<YamlDocument, YamlError> = YamlDocument.Parse(
     "name: pkg\nversion: 1\n",
@@ -260,7 +259,7 @@ func test_yaml_document_memarena_scratch_reset_durable() {
   arena.ResetAll();
 
   let root: Yaml = doc.Root();
-  let map_opt: YamlMap? = YamlAsMap(root);
+  let map_opt: YamlMap? = root.AsMap();
   AssertTrue(map_opt != nil);
   var mapv: YamlMap = map_opt as YamlMap;
   let name_n: Yaml? = mapv.Get("name");
@@ -271,7 +270,7 @@ func test_yaml_document_memarena_scratch_reset_durable() {
   AssertEqString((name_s as YamlStr).Text(), "pkg");
   let ver_n: Yaml? = mapv.Get("version");
   AssertTrue(ver_n != nil);
-  let ver_i: int64? = YamlAsInt(ver_n as Yaml);
+  let ver_i: int64? = (ver_n as Yaml).AsInt();
   AssertTrue(ver_i != nil);
   AssertEqI64(ver_i as int64, 1 as int64);
 
@@ -281,8 +280,8 @@ func test_yaml_document_memarena_scratch_reset_durable() {
 
 @test
 func test_yaml_document_parsefile_package_yaml() {
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   let r: Result<YamlDocument, YamlError> = YamlDocument.ParseFile("package.yaml", durable, scratch);
   if !r.IsOk() {
     let r2: Result<YamlDocument, YamlError> = YamlDocument.ParseFile(
@@ -295,7 +294,7 @@ func test_yaml_document_parsefile_package_yaml() {
     AssertTrue(doc_opt != nil);
     var doc: YamlDocument = doc_opt as YamlDocument;
     let root: Yaml = doc.Root();
-    let map_opt: YamlMap? = YamlAsMap(root);
+    let map_opt: YamlMap? = root.AsMap();
     AssertTrue(map_opt != nil);
     var mapv: YamlMap = map_opt as YamlMap;
     let name_n: Yaml? = mapv.Get("name");
@@ -311,7 +310,7 @@ func test_yaml_document_parsefile_package_yaml() {
   AssertTrue(doc_opt != nil);
   var doc: YamlDocument = doc_opt as YamlDocument;
   let root: Yaml = doc.Root();
-  let map_opt: YamlMap? = YamlAsMap(root);
+  let map_opt: YamlMap? = root.AsMap();
   AssertTrue(map_opt != nil);
   var mapv: YamlMap = map_opt as YamlMap;
   let name_n: Yaml? = mapv.Get("name");
@@ -320,4 +319,27 @@ func test_yaml_document_parsefile_package_yaml() {
   let name_s: YamlStr? = name_v.node.get_if<YamlStr>();
   AssertTrue(name_s != nil);
   AssertEqString((name_s as YamlStr).Text(), "yaml");
+}
+
+@test
+func test_yaml_string_projection_and_map_optional_text() {
+  let string_node: Yaml = Yaml.FromStr("");
+  AssertTrue(string_node.AsStr() != nil);
+  AssertEqString(string_node.AsStr() as string, "");
+  AssertTrue(Yaml.FromInt(3 as int64).AsStr() == nil);
+  AssertTrue(Yaml.Null().AsStr() == nil);
+  let durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  let scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  let result: Result<YamlDocument, YamlError> = YamlDocument.Parse(
+    "name: nyra\ncount: 3\nempty: \"\"\n",
+    durable,
+    scratch
+  );
+  AssertTrue(result.IsOk());
+  let document: YamlDocument = result.get_if<YamlDocument>() as YamlDocument;
+  let map: YamlMap = document.Root().AsMap() as YamlMap;
+  AssertEqString(map.TextOrEmpty("name"), "nyra");
+  AssertEqString(map.TextOrEmpty("missing"), "");
+  AssertEqString(map.TextOrEmpty("count"), "");
+  AssertEqString(map.TextOrEmpty("empty"), "");
 }

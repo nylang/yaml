@@ -16,16 +16,16 @@ func test_yaml_package_smoke() {
 
 @test
 func test_yaml_parse_empty_null() {
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   let r: Result<YamlDocument, YamlError> = YamlDocument.Parse("", durable, scratch);
   AssertTrue(r.IsOk());
 }
 
 @test
 func test_yaml_parse_name_x() {
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   let r: Result<YamlDocument, YamlError> = YamlDocument.Parse("name: x", durable, scratch);
   AssertTrue(r.IsOk());
   let doc_opt: YamlDocument? = r.get_if<YamlDocument>();
@@ -47,7 +47,7 @@ func test_yaml_parse_name_x() {
 
 @test
 func test_yaml_parse_nested_stdlib_path() {
-  let doc: Yaml = YamlParseTree("dependencies:\n  stdlib:\n    path: ../stdlib\n");
+  let doc: Yaml = Yaml.ParseOrNull("dependencies:\n  stdlib:\n    path: ../stdlib\n");
   let map: YamlMap? = doc.node.get_if<YamlMap>();
   AssertTrue(map != nil);
   let m: YamlMap = map as YamlMap;
@@ -74,7 +74,7 @@ func test_yaml_parse_nested_stdlib_path() {
 
 @test
 func test_yaml_parse_seq_two_maps() {
-  let doc: Yaml = YamlParseTree("- name: a\n- name: b\n");
+  let doc: Yaml = Yaml.ParseOrNull("- name: a\n- name: b\n");
   let seq: YamlSeq? = doc.node.get_if<YamlSeq>();
   AssertTrue(seq != nil);
   let s: YamlSeq = seq as YamlSeq;
@@ -109,7 +109,7 @@ func test_yaml_parse_seq_two_maps() {
 
 @test
 func test_yaml_parse_flow_map() {
-  let doc: Yaml = YamlParseTree("{a: 1}");
+  let doc: Yaml = Yaml.ParseOrNull("{a: 1}");
   let map: YamlMap? = doc.node.get_if<YamlMap>();
   AssertTrue(map != nil);
   let m: YamlMap = map as YamlMap;
@@ -125,7 +125,7 @@ func test_yaml_parse_flow_map() {
 
 @test
 func test_yaml_parse_empty_flow_map() {
-  let doc: Yaml = YamlParseTree("{}");
+  let doc: Yaml = Yaml.ParseOrNull("{}");
   let map: YamlMap? = doc.node.get_if<YamlMap>();
   AssertTrue(map != nil);
   let em: YamlMap = map as YamlMap;
@@ -134,7 +134,7 @@ func test_yaml_parse_empty_flow_map() {
 
 @test
 func test_yaml_parse_quoted_always_string() {
-  let doc: Yaml = YamlParseTree("x: \"true\"\n");
+  let doc: Yaml = Yaml.ParseOrNull("x: \"true\"\n");
   let map: YamlMap? = doc.node.get_if<YamlMap>();
   AssertTrue(map != nil);
   let m: YamlMap = map as YamlMap;
@@ -143,7 +143,7 @@ func test_yaml_parse_quoted_always_string() {
 
 @test
 func test_yaml_parse_quoted_three_len() {
-  let doc: Yaml = YamlParseTree("x: \"true\"\ny: \"1\"\nz: 'it''s'\n");
+  let doc: Yaml = Yaml.ParseOrNull("x: \"true\"\ny: \"1\"\nz: 'it''s'\n");
   let map: YamlMap? = doc.node.get_if<YamlMap>();
   AssertTrue(map != nil);
   let m: YamlMap = map as YamlMap;
@@ -152,7 +152,7 @@ func test_yaml_parse_quoted_three_len() {
 
 @test
 func test_yaml_parse_quoted_doc_true() {
-  let doc: Yaml = YamlParseTree("\"true\"");
+  let doc: Yaml = Yaml.ParseOrNull("\"true\"");
   let s: YamlStr? = doc.node.get_if<YamlStr>();
   AssertTrue(s != nil);
   let sv: YamlStr = s as YamlStr;
@@ -161,7 +161,7 @@ func test_yaml_parse_quoted_doc_true() {
 
 @test
 func test_yaml_parse_quoted_doc_one() {
-  let doc: Yaml = YamlParseTree("\"1\"");
+  let doc: Yaml = Yaml.ParseOrNull("\"1\"");
   let s: YamlStr? = doc.node.get_if<YamlStr>();
   AssertTrue(s != nil);
   let sv: YamlStr = s as YamlStr;
@@ -170,13 +170,13 @@ func test_yaml_parse_quoted_doc_one() {
 
 @test
 func test_yaml_parse_quoted_doc_esc() {
-  let doc: Yaml = YamlParseTree("'it''s'");
+  let doc: Yaml = Yaml.ParseOrNull("'it''s'");
   let _d: Yaml = doc;
 }
 
 @test
 func test_yaml_parse_core_scalars() {
-  let doc: Yaml = YamlParseTree("t: true\nf: false\nn: null\ni: 42\n");
+  let doc: Yaml = Yaml.ParseOrNull("t: true\nf: false\nn: null\ni: 42\n");
   let map: YamlMap? = doc.node.get_if<YamlMap>();
   AssertTrue(map != nil);
   let m: YamlMap = map as YamlMap;
@@ -185,7 +185,7 @@ func test_yaml_parse_core_scalars() {
 
 @test
 func test_yaml_parse_core_true() {
-  let doc: Yaml = YamlParseTree("t: true\n");
+  let doc: Yaml = Yaml.ParseOrNull("t: true\n");
   let map: YamlMap? = doc.node.get_if<YamlMap>();
   AssertTrue(map != nil);
   let m: YamlMap = map as YamlMap;
@@ -200,7 +200,7 @@ func test_yaml_parse_core_true() {
 
 @test
 func test_yaml_parse_core_false() {
-  let doc: Yaml = YamlParseTree("f: false\n");
+  let doc: Yaml = Yaml.ParseOrNull("f: false\n");
   let map: YamlMap? = doc.node.get_if<YamlMap>();
   AssertTrue(map != nil);
   let m: YamlMap = map as YamlMap;
@@ -215,7 +215,7 @@ func test_yaml_parse_core_false() {
 
 @test
 func test_yaml_parse_core_null() {
-  let doc: Yaml = YamlParseTree("n: null\n");
+  let doc: Yaml = Yaml.ParseOrNull("n: null\n");
   let map: YamlMap? = doc.node.get_if<YamlMap>();
   AssertTrue(map != nil);
   let m: YamlMap = map as YamlMap;
@@ -227,7 +227,7 @@ func test_yaml_parse_core_null() {
 
 @test
 func test_yaml_parse_core_int() {
-  let doc: Yaml = YamlParseTree("i: 42\n");
+  let doc: Yaml = Yaml.ParseOrNull("i: 42\n");
   let map: YamlMap? = doc.node.get_if<YamlMap>();
   AssertTrue(map != nil);
   let m: YamlMap = map as YamlMap;
@@ -245,8 +245,8 @@ func test_yaml_error_and_stubs() {
   let err: YamlError = YamlError{line: 1, column: 2, message: "e"};
   AssertEqI32(err.line, 1);
   AssertEqI32(err.column, 2);
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   let pf: Result<YamlDocument, YamlError> = YamlDocument.ParseFile(
     "/tmp/nyra_yaml_p3_missing_no_such.yaml",
     durable,
@@ -279,60 +279,60 @@ func test_yaml_map_seq_len_empty() {
 
 @test
 func test_yaml_parse_err_of_dup() {
-  let st: YamlParseErr = YamlParseErrOf("a: 1\na: 2\n");
+  let st: YamlParseErr = YamlParseErr.Probe("a: 1\na: 2\n");
   AssertTrue(st.failed);
   AssertTrue(st.message.Contains("duplicate"));
 }
 
 @test
 func test_yaml_parse_err_of_overflow() {
-  let st: YamlParseErr = YamlParseErrOf("n: 99999999999999999999\n");
+  let st: YamlParseErr = YamlParseErr.Probe("n: 99999999999999999999\n");
   AssertTrue(st.failed);
   AssertTrue(st.message.Contains("overflow"));
 }
 
 @test
 func test_yaml_emit_roundtrip_name_x() {
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  let doc: Yaml = YamlParseTree("name: x");
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  let doc: Yaml = Yaml.ParseOrNull("name: x");
   let text: string = YamlWriter.Emit(doc);
   AssertTrue(text.Contains("name:"));
   let r: Result<YamlDocument, YamlError> = YamlDocument.Parse(text, durable, scratch);
   AssertTrue(r.IsOk());
-  let doc2: Yaml = YamlParseTree("a: 1");
+  let doc2: Yaml = Yaml.ParseOrNull("a: 1");
   let text2: string = YamlWriter.Emit(doc2);
   let r2: Result<YamlDocument, YamlError> = YamlDocument.Parse(text2, durable, scratch);
   AssertTrue(r2.IsOk());
-  let doc3: Yaml = YamlParseTree("public: []\n");
+  let doc3: Yaml = Yaml.ParseOrNull("public: []\n");
   let text3: string = YamlWriter.Emit(doc3);
   AssertTrue(text3.Contains("[]"));
   let r3: Result<YamlDocument, YamlError> = YamlDocument.Parse(text3, durable, scratch);
   AssertTrue(r3.IsOk());
-  let doc4: Yaml = YamlParseTree("- a\n- b\n");
+  let doc4: Yaml = Yaml.ParseOrNull("- a\n- b\n");
   let text4: string = YamlWriter.Emit(doc4);
   AssertTrue(text4.Contains("- a"));
   AssertTrue(text4.Contains("- b"));
   let r4: Result<YamlDocument, YamlError> = YamlDocument.Parse(text4, durable, scratch);
   AssertTrue(r4.IsOk());
-  let doc5: Yaml = YamlParseTree("x: \"true\"\n");
+  let doc5: Yaml = Yaml.ParseOrNull("x: \"true\"\n");
   let text5: string = YamlWriter.Emit(doc5);
   let r5: Result<YamlDocument, YamlError> = YamlDocument.Parse(text5, durable, scratch);
   AssertTrue(r5.IsOk());
-  let nest: Yaml = YamlParseTree("dependencies:\n  stdlib:\n    path: ../stdlib\n");
+  let nest: Yaml = Yaml.ParseOrNull("dependencies:\n  stdlib:\n    path: ../stdlib\n");
   let nt: string = YamlWriter.Emit(nest);
   AssertTrue(nt.Contains("dependencies:"));
   AssertTrue(nt.Contains("path:"));
   let nr: Result<YamlDocument, YamlError> = YamlDocument.Parse(nt, durable, scratch);
   AssertTrue(nr.IsOk());
-  yaml_assert_round_trip(YamlParseTree("{a: 1}"));
-  yaml_assert_round_trip(YamlParseTree("{}"));
-  let seqm: Yaml = YamlParseTree("- name: a\n- name: b\n");
+  (Yaml.ParseOrNull("{a: 1}")).AssertRoundTrip();
+  (Yaml.ParseOrNull("{}")).AssertRoundTrip();
+  let seqm: Yaml = Yaml.ParseOrNull("- name: a\n- name: b\n");
   let seqt: string = YamlWriter.Emit(seqm);
   AssertTrue(seqt.Contains("name:"));
   let seqr: Result<YamlDocument, YamlError> = YamlDocument.Parse(seqt, durable, scratch);
   AssertTrue(seqr.IsOk());
-  let mapseq: Yaml = YamlParseTree("name: yaml\nitems:\n  - a\n  - b\n");
+  let mapseq: Yaml = Yaml.ParseOrNull("name: yaml\nitems:\n  - a\n  - b\n");
   let mst: string = YamlWriter.Emit(mapseq);
   AssertTrue(mst.Contains("items:"));
   AssertTrue(mst.Contains("- a"));
@@ -349,4 +349,17 @@ func test_yaml_emit_roundtrip_name_x() {
   } else {
     AssertTrue(pkg.IsOk());
   }
+}
+
+// False is a real scalar payload, not the nil result for other YAML kinds.
+@test(tag = "yaml-scalar-projection") func test_yaml_boolean_projection_preserves_false_and_kind_boundaries() {
+  let yes: bool? = Yaml.FromBool(true).AsBool();
+  let no: bool? = Yaml.FromBool(false).AsBool();
+  AssertTrue(yes != nil);
+  AssertTrue(no != nil);
+  AssertTrue(yes as bool);
+  AssertFalse(no as bool);
+  AssertTrue(Yaml.FromStr("false").AsBool() == nil);
+  AssertTrue(Yaml.FromInt(0).AsBool() == nil);
+  AssertTrue(Yaml{node: YamlNull{_pad: 0}}.AsBool() == nil);
 }

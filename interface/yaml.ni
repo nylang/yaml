@@ -315,19 +315,19 @@ pub method(YamlInt) I64() -> int64;
  * @brief Read a representable signed integer from the document node.
  * @returns The matching payload, or nil when the node cannot be represented by that accessor.
  */
-pub func YamlAsInt(doc: Yaml) -> int64?;
+pub method(Yaml) AsInt() -> int64?;
 
 /**
  * @brief Read a mapping from the document node.
  * @returns The matching payload, or nil when the node cannot be represented by that accessor.
  */
-pub func YamlAsMap(doc: Yaml) -> YamlMap?;
+pub method(Yaml) AsMap() -> YamlMap?;
 
 /**
  * @brief Read a sequence from the document node.
  * @returns The matching payload, or nil when the node cannot be represented by that accessor.
  */
-pub func YamlAsSeq(doc: Yaml) -> YamlSeq?;
+pub method(Yaml) AsSeq() -> YamlSeq?;
 
 /**
  * @brief 1-based line (0 for I/O errors).
@@ -352,11 +352,30 @@ pub method(YamlError) Message() -> string;
  * @returns True when node kinds and their recursive contents match.
  * @note Existing comparison entry retained across implementation module separation.
  */
-pub func YamlTreesEqual(a: Yaml, b: Yaml) -> bool;
+pub method(Yaml) Equals(b: Yaml) -> bool;
 
 /**
  * @brief Format the existing canonical diagnostic tree dump.
  * @returns A JSON-like diagnostic representation followed by one newline.
  * @note This diagnostic format is distinct from YamlWriter.Emit's YAML document text.
  */
-pub func YamlCanonicalDump(node: Yaml) -> string;
+pub method(Yaml) CanonicalDump() -> string;
+
+/**
+ * @brief Read a string scalar without coercing other YAML kinds.
+ * @returns Owned text for a string node, including empty text; nil for every other kind.
+ */
+pub method(Yaml) AsStr() -> string?;
+
+/**
+ * @brief Read an optional string-valued mapping entry.
+ * @param key Mapping key borrowed during lookup.
+ * @returns Owned string payload; empty text for missing, non-string or empty values.
+ */
+pub method(YamlMap) TextOrEmpty(key: string) -> string;
+
+/**
+ * @brief Read a boolean scalar without coercing other YAML kinds.
+ * @returns The stored true or false value; nil for every non-boolean kind.
+ */
+pub method(Yaml) AsBool() -> bool?;

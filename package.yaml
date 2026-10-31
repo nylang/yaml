@@ -1,6 +1,6 @@
 # YAML support package for nyra-core.
 name: yaml
-version: 0.18.0
+version: 0.19.0
 license: MIT
 directories:
   interface:
@@ -10,3 +10,4 @@ directories:
   private:
     - tests
     - private
+analysis-options: lint.yaml

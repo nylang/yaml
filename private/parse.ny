@@ -34,15 +34,15 @@ struct YamlParser {
   parse_seq: YamlSeq;
 }
 
-func yaml_parser_new(tokens: YamlScanResult) -> YamlParser {
+static method(YamlParser) New(tokens: YamlScanResult) -> YamlParser {
   return YamlParser{
     tokens: move(tokens),
     parse_i: 0,
     parse_failed: false,
     parse_err_line: 1,
     parse_err_column: 1,
-    parse_err_message: YamlEmptyStr(),
-    entry_key: YamlEmptyStr(),
+    parse_err_message: "",
+    entry_key: "",
     entry_line: 1,
     entry_column: 1,
     entry_ok: false,
@@ -57,7 +57,7 @@ struct YamlI64Parse {
   ok: bool;
 }
 
-func yaml_hex_digit(b: int32) -> int32 {
+static method(YamlParser) HexDigit(b: int32) -> int32 {
   if (b >= 48) && (b <= 57) {
     return b - 48;
   }
@@ -74,8 +74,8 @@ func yaml_hex_digit(b: int32) -> int32 {
 }
 
 // Bound magnitude accumulation before arithmetic so malformed or overflowing scalars cannot wrap into valid integers.
-func yaml_parse_i64(s: string) -> YamlI64Parse {
-  var out: YamlI64Parse = YamlI64Parse{value: 0 as int64, ok: false};
+static method(YamlI64Parse) Parse(s: string) -> YamlI64Parse {
+  var out: YamlI64Parse = YamlI64Parse{value: 0i64, ok: false};
   let n: int32 = s.length;
   if n <= 0 {
     return out;
@@ -83,7 +83,7 @@ func yaml_parse_i64(s: string) -> YamlI64Parse {
 
   var i: int32 = 0;
   var neg: bool = false;
-  if YamlParseByte(s, 0) == 45 {
+  if s.ByteAt(0) == 45 {
     neg = true;
     i = 1;
     if n == 1 {
@@ -91,8 +91,8 @@ func yaml_parse_i64(s: string) -> YamlI64Parse {
     }
   }
 
-  var mag: uint64 = 0u64;
-  let ten: uint64 = 10u64;
+  var mag: uint64 = 0;
+  let ten: uint64 = 10;
   let lim_pos: uint64 = 9223372036854775807u64;
   let lim_neg: uint64 = 9223372036854775808u64;
   var lim: uint64 = lim_pos;
@@ -102,7 +102,7 @@ func yaml_parse_i64(s: string) -> YamlI64Parse {
 
   var any: bool = false;
   while i < n {
-    let b: int32 = YamlParseByte(s, i);
+    let b: int32 = s.ByteAt(i);
     if (b < 48) || (b > 57) {
       return out;
     }
@@ -129,12 +129,12 @@ func yaml_parse_i64(s: string) -> YamlI64Parse {
   out.ok = true;
   if neg {
     if mag == lim_neg {
-      out.value = (0 as int64) - (9223372036854775807 as int64) - (1 as int64);
+      out.value = kInt64Min;
 
       return out;
     }
 
-    out.value = (0 as int64) - (mag as int64);
+    out.value = (0i64) - (mag as int64);
 
     return out;
   }
@@ -144,12 +144,12 @@ func yaml_parse_i64(s: string) -> YamlI64Parse {
   return out;
 }
 
-func yaml_str_hash(s: string) -> int32 {
+static method(YamlParser) HashKey(s: string) -> int32 {
   var h: int32 = 5381;
   var i: int32 = 0;
   let n: int32 = s.length;
   while i < n {
-    let b: int32 = YamlParseByte(s, i);
+    let b: int32 = s.ByteAt(i);
     h = (h * 33) + b;
     i = i + 1;
   }
@@ -157,7 +157,7 @@ func yaml_str_hash(s: string) -> int32 {
   return h;
 }
 
-func yaml_is_scalar_kind(k: int32) -> bool {
+static method(YamlParser) IsScalarKind(k: int32) -> bool {
   if k == kYamlTokPlain {
     return true;
   }
@@ -177,7 +177,7 @@ func yaml_is_scalar_kind(k: int32) -> bool {
   return k == kYamlTokNull;
 }
 
-func yaml_is_stop_kind(k: int32) -> bool {
+static method(YamlParser) IsStopKind(k: int32) -> bool {
   if k == kYamlTokStreamEnd {
     return true;
   }
@@ -203,11 +203,11 @@ func yaml_is_stop_kind(k: int32) -> bool {
 
 method(YamlParser) Tok(i: int32) -> YamlToken {
   if i < 0 {
-    return YamlToken{kind: kYamlTokStreamEnd, lexeme: YamlEmptyStr(), line: 1, column: 1};
+    return YamlToken{kind: kYamlTokStreamEnd, lexeme: "", line: 1, column: 1};
   }
 
   if i >= self.tokens.Len() {
-    return YamlToken{kind: kYamlTokStreamEnd, lexeme: YamlEmptyStr(), line: 1, column: 1};
+    return YamlToken{kind: kYamlTokStreamEnd, lexeme: "", line: 1, column: 1};
   }
 
   return self.tokens.Get(i);
@@ -251,7 +251,7 @@ method(YamlParser) FailAt(line: int32, column: int32, message: string) -> void {
   self.parse_failed = true;
   self.parse_err_line = line;
   self.parse_err_column = column;
-  self.parse_err_message = YamlCopyStr(message);
+  self.parse_err_message = copy(message);
 }
 
 method(YamlParser) FailHere(message: string) -> void {
@@ -303,7 +303,7 @@ method(YamlParser) UnescapeDouble(inner: string, line: int32, column: int32) -> 
   var i: int32 = 0;
   let n: int32 = inner.length;
   while i < n {
-    let b: int32 = YamlParseByte(inner, i);
+    let b: int32 = inner.ByteAt(i);
     if b != 92 {
       var nch: int32 = inner.Utf8LenAt(i);
       if nch < 1 {
@@ -320,10 +320,10 @@ method(YamlParser) UnescapeDouble(inner: string, line: int32, column: int32) -> 
       self.FailAt(line, column, "invalid escape in double-quoted scalar");
       buf.Destroy();
 
-      return YamlEmptyStr();
+      return "";
     }
 
-    let e: int32 = YamlParseByte(inner, i);
+    let e: int32 = inner.ByteAt(i);
     i = i + 1;
     if e == 110 {
       buf.Append("\n");
@@ -361,7 +361,7 @@ method(YamlParser) UnescapeDouble(inner: string, line: int32, column: int32) -> 
     }
 
     if e == 48 {
-      buf.Append(YamlUtf8Cp(0));
+      buf.Append(YamlStr.EncodeCodePoint(0));
       continue;
     }
 
@@ -382,15 +382,15 @@ method(YamlParser) UnescapeDouble(inner: string, line: int32, column: int32) -> 
           self.FailAt(line, column, "invalid escape in double-quoted scalar");
           buf.Destroy();
 
-          return YamlEmptyStr();
+          return "";
         }
 
-        let hv: int32 = yaml_hex_digit(YamlParseByte(inner, i));
+        let hv: int32 = YamlParser.HexDigit(inner.ByteAt(i));
         if hv < 0 {
           self.FailAt(line, column, "invalid escape in double-quoted scalar");
           buf.Destroy();
 
-          return YamlEmptyStr();
+          return "";
         }
 
         cp = (cp * 16) + hv;
@@ -398,20 +398,20 @@ method(YamlParser) UnescapeDouble(inner: string, line: int32, column: int32) -> 
         h = h + 1;
       }
 
-      buf.Append(YamlUtf8Cp(cp));
+      buf.Append(YamlStr.EncodeCodePoint(cp));
       continue;
     }
 
     self.FailAt(line, column, "invalid escape in double-quoted scalar");
     buf.Destroy();
 
-    return YamlEmptyStr();
+    return "";
   }
 
   if self.parse_failed {
     buf.Destroy();
 
-    return YamlEmptyStr();
+    return "";
   }
 
   return buf.Take();
@@ -422,9 +422,9 @@ method(YamlParser) UnescapeSingle(inner: string) -> string {
   var i: int32 = 0;
   let n: int32 = inner.length;
   while i < n {
-    let b: int32 = YamlParseByte(inner, i);
+    let b: int32 = inner.ByteAt(i);
     if b == 39 {
-      if (i + 1 < n) && (YamlParseByte(inner, i + 1) == 39) {
+      if (i + 1 < n) && (inner.ByteAt(i + 1) == 39) {
         buf.Append("'");
         i = i + 2;
         continue;
@@ -445,7 +445,7 @@ method(YamlParser) UnescapeSingle(inner: string) -> string {
 
 method(YamlParser) LexemeAt(i: int32) -> string {
   if i < 0 || i >= self.tokens.Len() {
-    return YamlEmptyStr();
+    return "";
   }
 
   return self.tokens.Get(i).lexeme;
@@ -460,20 +460,20 @@ method(YamlParser) ParseKeyString() -> string {
   if i < 0 {
     self.FailHere("expected a mapping key");
 
-    return YamlEmptyStr();
+    return "";
   }
 
   if i >= self.tokens.Len() {
     self.FailHere("expected a mapping key");
 
-    return YamlEmptyStr();
+    return "";
   }
 
   let kind: int32 = self.tokens.Get(i).kind;
-  if !yaml_is_scalar_kind(kind) {
+  if !YamlParser.IsScalarKind(kind) {
     self.FailHere("expected a mapping key");
 
-    return YamlEmptyStr();
+    return "";
   }
 
   let ln: int32 = self.tokens.Get(i).line;
@@ -483,14 +483,14 @@ method(YamlParser) ParseKeyString() -> string {
   if kind == kYamlTokStr {
     let q: int32 = self.QuoteByteAt(i);
     if q == 39 {
-      return YamlCopyStr(self.UnescapeSingle(view));
+      return copy(self.UnescapeSingle(view));
     }
 
-    return YamlCopyStr(self.UnescapeDouble(view, ln, col));
+    return copy(self.UnescapeDouble(view, ln, col));
   }
 
   if view.length <= 0 {
-    return YamlEmptyStr();
+    return "";
   }
 
   var out: string = string.Alloc(view.length);
@@ -504,13 +504,13 @@ method(YamlParser) ParseScalar() -> Yaml {
   if i < 0 {
     self.FailHere("expected a scalar");
 
-    return YamlNullNode();
+    return Yaml.Null();
   }
 
   if i >= self.tokens.Len() {
     self.FailHere("expected a scalar");
 
-    return YamlNullNode();
+    return Yaml.Null();
   }
 
   let kind: int32 = self.tokens.Get(i).kind;
@@ -519,30 +519,30 @@ method(YamlParser) ParseScalar() -> Yaml {
   let view: string = self.LexemeAt(i);
   self.parse_i = i + 1;
   if kind == kYamlTokNull {
-    return YamlNullNode();
+    return Yaml.Null();
   }
 
   if kind == kYamlTokBool {
     var v: bool = false;
     if view.length > 0 {
-      let b0: int32 = YamlParseByte(view, 0);
+      let b0: int32 = view.ByteAt(0);
       if (b0 == 116) || (b0 == 84) {
         v = true;
       }
     }
 
-    return YamlBoolNode(v);
+    return Yaml.FromBool(v);
   }
 
   if kind == kYamlTokInt {
-    let p: YamlI64Parse = yaml_parse_i64(view);
+    let p: YamlI64Parse = YamlI64Parse.Parse(view);
     if !p.ok {
       self.FailAt(ln, col, "integer overflow");
 
-      return YamlNullNode();
+      return Yaml.Null();
     }
 
-    return YamlIntNode(p.value);
+    return Yaml.FromInt(p.value);
   }
 
   if kind == kYamlTokStr {
@@ -551,7 +551,7 @@ method(YamlParser) ParseScalar() -> Yaml {
       var need_u: bool = false;
       var ui: int32 = 0;
       while ui < view.length {
-        if YamlParseByte(view, ui) == 39 {
+        if view.ByteAt(ui) == 39 {
           need_u = true;
           break;
         }
@@ -560,13 +560,13 @@ method(YamlParser) ParseScalar() -> Yaml {
       }
 
       if need_u {
-        return YamlStrNode(self.UnescapeSingle(view));
+        return Yaml.FromStr(self.UnescapeSingle(view));
       }
     } else {
       var need_d: bool = false;
       var di: int32 = 0;
       while di < view.length {
-        if YamlParseByte(view, di) == 92 {
+        if view.ByteAt(di) == 92 {
           need_d = true;
           break;
         }
@@ -575,34 +575,34 @@ method(YamlParser) ParseScalar() -> Yaml {
       }
 
       if need_d {
-        return YamlStrNode(self.UnescapeDouble(view, ln, col));
+        return Yaml.FromStr(self.UnescapeDouble(view, ln, col));
       }
     }
 
     if view.length <= 0 {
-      return YamlStrNode(YamlEmptyStr());
+      return Yaml.FromStr("");
     }
 
     var outs: string = string.Alloc(view.length);
     memcpy((outs.data as *mut uint8), view.data, view.length as uintptr);
 
-    return YamlStrNode(outs);
+    return Yaml.FromStr(outs);
   }
 
   if kind == kYamlTokPlain {
     if view.length <= 0 {
-      return YamlStrNode(YamlEmptyStr());
+      return Yaml.FromStr("");
     }
 
     var out: string = string.Alloc(view.length);
     memcpy((out.data as *mut uint8), view.data, view.length as uintptr);
 
-    return YamlStrNode(out);
+    return Yaml.FromStr(out);
   }
 
   self.FailHere("expected a scalar");
 
-  return YamlNullNode();
+  return Yaml.Null();
 }
 
 method(YamlParser) ParseFlowMap() -> void {
@@ -645,7 +645,7 @@ method(YamlParser) ParseFlowMap() -> void {
     var hd: int32 = 0;
     let hn: int32 = hashes.Len();
     var isdupf: bool = false;
-    let kh: int32 = yaml_str_hash(key);
+    let kh: int32 = YamlParser.HashKey(key);
     while hd < hn {
       if hashes.Get(hd) == kh {
         self.FailAt(kline, kcol, "duplicate mapping key");
@@ -730,13 +730,13 @@ method(YamlParser) ParseFlowNode() -> Yaml {
     return self.TakeSeq();
   }
 
-  if yaml_is_scalar_kind(k) {
+  if YamlParser.IsScalarKind(k) {
     return self.ParseScalar();
   }
 
   self.FailHere("expected a flow node");
 
-  return YamlNullNode();
+  return Yaml.Null();
 }
 
 method(YamlParser) ParseMapValue() -> Yaml {
@@ -767,21 +767,21 @@ method(YamlParser) ParseMapValue() -> Yaml {
     return self.TakeSeq();
   }
 
-  if yaml_is_scalar_kind(k) {
+  if YamlParser.IsScalarKind(k) {
     if self.PeekNextKind() == kYamlTokColon {
-      return YamlNullNode();
+      return Yaml.Null();
     }
 
     return self.ParseScalar();
   }
 
-  if yaml_is_stop_kind(k) {
-    return YamlNullNode();
+  if YamlParser.IsStopKind(k) {
+    return Yaml.Null();
   }
 
   self.FailHere("expected a mapping value");
 
-  return YamlNullNode();
+  return Yaml.Null();
 }
 
 method(YamlParser) ParseBlockMap() -> void {
@@ -791,11 +791,11 @@ method(YamlParser) ParseBlockMap() -> void {
   var hashes: Array<int32> = Array<int32>{};
   while !self.parse_failed {
     let k: int32 = self.PeekKind();
-    if yaml_is_stop_kind(k) {
+    if YamlParser.IsStopKind(k) {
       break;
     }
 
-    if yaml_is_scalar_kind(k) && self.tokens.Get(self.parse_i).column < base_column {
+    if YamlParser.IsScalarKind(k) && self.tokens.Get(self.parse_i).column < base_column {
       break;
     }
 
@@ -807,7 +807,7 @@ method(YamlParser) ParseBlockMap() -> void {
           break;
         }
 
-        if yaml_is_stop_kind(self.PeekKind()) {
+        if YamlParser.IsStopKind(self.PeekKind()) {
           self.FailHere("expected dedent after nested mapping keys");
           break;
         }
@@ -837,7 +837,7 @@ method(YamlParser) ParseBlockMap() -> void {
         var hd: int32 = 0;
         let hn: int32 = hashes.Len();
         var isdup: bool = false;
-        let kh: int32 = yaml_str_hash(key);
+        let kh: int32 = YamlParser.HashKey(key);
         while hd < hn {
           if hashes.Get(hd) == kh {
             self.FailAt(kline, kcol, "duplicate mapping key");
@@ -859,7 +859,7 @@ method(YamlParser) ParseBlockMap() -> void {
       continue;
     }
 
-    if !yaml_is_scalar_kind(k) {
+    if !YamlParser.IsScalarKind(k) {
       break;
     }
 
@@ -888,7 +888,7 @@ method(YamlParser) ParseBlockMap() -> void {
     var hd2: int32 = 0;
     let hn2: int32 = hashes.Len();
     var isdup2: bool = false;
-    let kh2: int32 = yaml_str_hash(key2);
+    let kh2: int32 = YamlParser.HashKey(key2);
     while hd2 < hn2 {
       if hashes.Get(hd2) == kh2 {
         self.FailAt(kline2, kcol2, "duplicate mapping key");
@@ -913,7 +913,7 @@ method(YamlParser) ParseBlockMap() -> void {
           break;
         }
 
-        if yaml_is_stop_kind(self.PeekKind()) {
+        if YamlParser.IsStopKind(self.PeekKind()) {
           self.FailHere("expected dedent after continued mapping keys");
           break;
         }
@@ -943,7 +943,7 @@ method(YamlParser) ParseBlockMap() -> void {
         var hd3: int32 = 0;
         let hn3: int32 = hashes.Len();
         var isdup3: bool = false;
-        let kh3: int32 = yaml_str_hash(key3);
+        let kh3: int32 = YamlParser.HashKey(key3);
         while hd3 < hn3 {
           if hashes.Get(hd3) == kh3 {
             self.FailAt(kline3, kcol3, "duplicate mapping key");
@@ -1032,7 +1032,7 @@ method(YamlParser) ParseNode() -> Yaml {
     return self.TakeSeq();
   }
 
-  if yaml_is_scalar_kind(k) {
+  if YamlParser.IsScalarKind(k) {
     if self.PeekNextKind() == kYamlTokColon {
       self.ParseBlockMap();
 
@@ -1042,13 +1042,13 @@ method(YamlParser) ParseNode() -> Yaml {
     return self.ParseScalar();
   }
 
-  if yaml_is_stop_kind(k) {
-    return YamlNullNode();
+  if YamlParser.IsStopKind(k) {
+    return Yaml.Null();
   }
 
   self.FailHere("unexpected token");
 
-  return YamlNullNode();
+  return Yaml.Null();
 }
 
 method(YamlParser) TakeMap() -> Yaml {
@@ -1110,7 +1110,7 @@ method(YamlParser) FillDocument() -> void {
     return;
   }
 
-  if yaml_is_scalar_kind(k) {
+  if YamlParser.IsScalarKind(k) {
     if self.PeekNextKind() == kYamlTokColon {
       self.ParseBlockMap();
       if self.parse_failed {
@@ -1136,35 +1136,23 @@ pub struct YamlParseErr {
   message: string;
 }
 
-func yaml_parse_fail_result(line: int32, column: int32, message: string) -> Result<Yaml, YamlError> {
-  var msg: string = message;
-  if message.length > 0 {
-    var out: string = string.Alloc(message.length);
-    memcpy((out.data as *mut uint8), message.data, message.length as uintptr);
-    msg = out;
-  }
-
-  let err: YamlError = YamlError{line: line, column: column, message: msg};
-
-  return Err<Yaml, YamlError>(err);
-}
-
 /**
  * @brief Internal v1 parse → `Yaml` tree (Reader feed; not a product free `Parse`).
+ * @returns A retained tree or syntax diagnostic; does not expose mutable parser state.
  */
-pub func YamlParseResult(text: string) -> Result<Yaml, YamlError> {
-  var tokens: YamlScanResult = MakeEmptyScanResult();
+pub static method(Yaml) ParseSyntax(text: string) -> Result<Yaml, YamlError> {
+  var tokens: YamlScanResult = YamlScanResult.New();
   tokens.Tokenize(text);
   if !tokens.IsOk() {
     let se: YamlError = tokens.Error();
 
-    return yaml_parse_fail_result(se.line, se.column, se.message);
+    return Err<Yaml, YamlError>(YamlError.New(se.line, se.column, se.message));
   }
 
-  var scan: YamlParser = yaml_parser_new(move(tokens));
+  var scan: YamlParser = YamlParser.New(move(tokens));
   scan.FillDocument();
   if scan.parse_failed {
-    return yaml_parse_fail_result(scan.parse_err_line, scan.parse_err_column, scan.parse_err_message);
+    return Err<Yaml, YamlError>(YamlError.New(scan.parse_err_line, scan.parse_err_column, scan.parse_err_message));
   }
 
   if scan.parse_arm == 5 {
@@ -1176,13 +1164,13 @@ pub func YamlParseResult(text: string) -> Result<Yaml, YamlError> {
   }
 
   if scan.parse_arm == 0 {
-    return Ok<Yaml, YamlError>(YamlNullNode());
+    return Ok<Yaml, YamlError>(Yaml.Null());
   }
 
   let n: Yaml = scan.ParseNode();
   scan.FinishTrail();
   if scan.parse_failed {
-    return yaml_parse_fail_result(scan.parse_err_line, scan.parse_err_column, scan.parse_err_message);
+    return Err<Yaml, YamlError>(YamlError.New(scan.parse_err_line, scan.parse_err_column, scan.parse_err_message));
   }
 
   return Ok<Yaml, YamlError>(n);
@@ -1190,16 +1178,17 @@ pub func YamlParseResult(text: string) -> Result<Yaml, YamlError> {
 
 /**
  * @brief Test helper: parse or `YamlNull` on failure (private; not product API).
+ * @returns Parsed value, or the null node when syntax fails.
  */
-pub func YamlParseTree(text: string) -> Yaml {
-  let r: Result<Yaml, YamlError> = YamlParseResult(text);
+pub static method(Yaml) ParseOrNull(text: string) -> Yaml {
+  let r: Result<Yaml, YamlError> = Yaml.ParseSyntax(text);
   if r.IsErr() {
-    return YamlNullNode();
+    return Yaml.Null();
   }
 
   let root: Yaml? = r.get_if<Yaml>();
   if root == nil {
-    return YamlNullNode();
+    return Yaml.Null();
   }
 
   return root as Yaml;
@@ -1209,27 +1198,27 @@ pub func YamlParseTree(text: string) -> Yaml {
  * @brief Inspect syntax failures without exposing the mutable parse cursor.
  * @returns A copied diagnostic summary; failed is false when parsing succeeds.
  */
-pub func YamlParseErrOf(text: string) -> YamlParseErr {
-  var out: YamlParseErr = YamlParseErr{failed: false, line: 1, column: 1, message: YamlEmptyStr()};
-  var tokens: YamlScanResult = MakeEmptyScanResult();
+pub static method(YamlParseErr) Probe(text: string) -> YamlParseErr {
+  var out: YamlParseErr = YamlParseErr{failed: false, line: 1, column: 1, message: ""};
+  var tokens: YamlScanResult = YamlScanResult.New();
   tokens.Tokenize(text);
   if !tokens.IsOk() {
     out.failed = true;
     let se: YamlError = tokens.Error();
     out.line = se.line;
     out.column = se.column;
-    out.message = YamlCopyStr(se.message);
+    out.message = copy(se.message);
 
     return out;
   }
 
-  var scan: YamlParser = yaml_parser_new(move(tokens));
+  var scan: YamlParser = YamlParser.New(move(tokens));
   scan.FillDocument();
   if scan.parse_failed {
     out.failed = true;
     out.line = scan.parse_err_line;
     out.column = scan.parse_err_column;
-    out.message = YamlCopyStr(scan.parse_err_message);
+    out.message = copy(scan.parse_err_message);
   }
 
   return out;

@@ -10,23 +10,23 @@ part of YamlTests;
  * @note MemStack/MemArena must be Init'd in-place (ctx points at self).
  */
 
-pub static kYamlEvNull: int32 = 1;
+pub constexpr kYamlEvNull: int32 = 1;
 
-pub static kYamlEvBool: int32 = 2;
+pub constexpr kYamlEvBool: int32 = 2;
 
-pub static kYamlEvInt64: int32 = 3;
+pub constexpr kYamlEvInt64: int32 = 3;
 
-pub static kYamlEvString: int32 = 4;
+pub constexpr kYamlEvString: int32 = 4;
 
-pub static kYamlEvStartObject: int32 = 5;
+pub constexpr kYamlEvStartObject: int32 = 5;
 
-pub static kYamlEvKey: int32 = 6;
+pub constexpr kYamlEvKey: int32 = 6;
 
-pub static kYamlEvEndObject: int32 = 7;
+pub constexpr kYamlEvEndObject: int32 = 7;
 
-pub static kYamlEvStartArray: int32 = 8;
+pub constexpr kYamlEvStartArray: int32 = 8;
 
-pub static kYamlEvEndArray: int32 = 9;
+pub constexpr kYamlEvEndArray: int32 = 9;
 
 /**
  * @brief Mutable event log (pointed at by the Handler shell).
@@ -48,7 +48,7 @@ struct YamlEventRecorder implements YamlHandler {
   st: *mut YamlEvState;
 }
 
-func yaml_ev_state_new() -> YamlEvState {
+static method(YamlEvState) New() -> YamlEvState {
   return YamlEvState{
     kinds: Array<int32>{},
     bools: Array<int32>{},
@@ -60,136 +60,132 @@ func yaml_ev_state_new() -> YamlEvState {
   };
 }
 
-func yaml_ev_push_kind(st: *mut YamlEvState, k: int32) -> bool {
+method(YamlEvState) PushKind(k: int32) -> bool {
   unsafe {
-    (*st).seen = (*st).seen + 1;
-    if ((*st).abort_at >= 0) && ((*st).seen >(*st).abort_at) {
+    self.seen = self.seen + 1;
+    if (self.abort_at >= 0) && (self.seen >self.abort_at) {
       return false;
     }
 
-    (*st).kinds.Push(k);
+    self.kinds.Push(k);
 
     return true;
   }
 }
 
 method(YamlEventRecorder) Null() -> bool {
-  return yaml_ev_push_kind(self.st, kYamlEvNull);
+  unsafe {
+    return (*self.st).PushKind(kYamlEvNull);
+  }
 }
 
 method(YamlEventRecorder) Bool(b: bool) -> bool {
-  if !yaml_ev_push_kind(self.st, kYamlEvBool) {
-    return false;
-  }
-
   unsafe {
-    if b {
-      (*self.st).bools.Push(1);
-    } else {
-      (*self.st).bools.Push(0);
+    if !(*self.st).PushKind(kYamlEvBool) {
+      return false;
     }
-  }
 
-  return true;
+    unsafe {
+      if b {
+        (*self.st).bools.Push(1);
+      } else {
+        (*self.st).bools.Push(0);
+      }
+    }
+
+    return true;
+  }
 }
 
 method(YamlEventRecorder) Int64(v: int64) -> bool {
-  if !yaml_ev_push_kind(self.st, kYamlEvInt64) {
-    return false;
-  }
-
   unsafe {
-    (*self.st).ints.Push(v);
-  }
+    if !(*self.st).PushKind(kYamlEvInt64) {
+      return false;
+    }
 
-  return true;
+    unsafe {
+      (*self.st).ints.Push(v);
+    }
+
+    return true;
+  }
 }
 
 method(YamlEventRecorder) String(s: string) -> bool {
-  if !yaml_ev_push_kind(self.st, kYamlEvString) {
-    return false;
-  }
-
   unsafe {
-    (*self.st).strings.Push(copy(s));
-  }
+    if !(*self.st).PushKind(kYamlEvString) {
+      return false;
+    }
 
-  return true;
+    unsafe {
+      (*self.st).strings.Push(copy(s));
+    }
+
+    return true;
+  }
 }
 
 method(YamlEventRecorder) StartObject() -> bool {
-  return yaml_ev_push_kind(self.st, kYamlEvStartObject);
+  unsafe {
+    return (*self.st).PushKind(kYamlEvStartObject);
+  }
 }
 
 method(YamlEventRecorder) Key(k: string) -> bool {
-  if !yaml_ev_push_kind(self.st, kYamlEvKey) {
-    return false;
-  }
-
   unsafe {
-    (*self.st).strings.Push(copy(k));
-  }
+    if !(*self.st).PushKind(kYamlEvKey) {
+      return false;
+    }
 
-  return true;
+    unsafe {
+      (*self.st).strings.Push(copy(k));
+    }
+
+    return true;
+  }
 }
 
 method(YamlEventRecorder) EndObject(member_count: int32) -> bool {
-  if !yaml_ev_push_kind(self.st, kYamlEvEndObject) {
-    return false;
-  }
-
   unsafe {
-    (*self.st).counts.Push(member_count);
-  }
+    if !(*self.st).PushKind(kYamlEvEndObject) {
+      return false;
+    }
 
-  return true;
+    unsafe {
+      (*self.st).counts.Push(member_count);
+    }
+
+    return true;
+  }
 }
 
 method(YamlEventRecorder) StartArray() -> bool {
-  return yaml_ev_push_kind(self.st, kYamlEvStartArray);
+  unsafe {
+    return (*self.st).PushKind(kYamlEvStartArray);
+  }
 }
 
 method(YamlEventRecorder) EndArray(element_count: int32) -> bool {
-  if !yaml_ev_push_kind(self.st, kYamlEvEndArray) {
-    return false;
-  }
-
   unsafe {
-    (*self.st).counts.Push(element_count);
-  }
+    if !(*self.st).PushKind(kYamlEvEndArray) {
+      return false;
+    }
 
-  return true;
-}
+    unsafe {
+      (*self.st).counts.Push(element_count);
+    }
 
-/**
- * @brief Slice the Allocator ABI row from an in-place-Init'd MemStack (ctx → stack).
- */
-func yaml_scratch_from_stack(stack: ref mut MemStack) -> Allocator {
-  unsafe {
-    let sp: *mut MemStack = cast<MemStack>.pointer(stack);
-    let ap: *mut Allocator = cast<Allocator>.pointer(sp);
-
-    return *ap;
+    return true;
   }
 }
 
-/**
- * @brief Slice the Allocator ABI row from an in-place-Init'd MemArena (ctx → arena).
- */
-func yaml_scratch_from_arena(arena: ref mut MemArena) -> Allocator {
-  unsafe {
-    let ap: *mut MemArena = cast<MemArena>.pointer(arena);
-    let bp: *mut Allocator = cast<Allocator>.pointer(ap);
 
-    return *bp;
-  }
-}
 
 @test
 func test_yaml_reader_empty_null_event() {
-  var state: YamlEvState = yaml_ev_state_new();
+  var state: YamlEvState = YamlEvState.New();
   var rec: YamlEventRecorder = YamlEventRecorder{st: cast<YamlEvState>.pointer(& mut state)};
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   var reader: YamlReader = YamlReader.New();
   let r: Result<Unit, YamlError> = reader.Parse("", rec, scratch);
   AssertTrue(r.IsOk());
@@ -199,9 +195,9 @@ func test_yaml_reader_empty_null_event() {
 
 @test
 func test_yaml_reader_map_name_string() {
-  var state: YamlEvState = yaml_ev_state_new();
+  var state: YamlEvState = YamlEvState.New();
   var rec: YamlEventRecorder = YamlEventRecorder{st: cast<YamlEvState>.pointer(& mut state)};
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   var reader: YamlReader = YamlReader.New();
   let r: Result<Unit, YamlError> = reader.Parse("name: x", rec, scratch);
   AssertTrue(r.IsOk());
@@ -219,9 +215,9 @@ func test_yaml_reader_map_name_string() {
 
 @test
 func test_yaml_reader_seq_scalars() {
-  var state: YamlEvState = yaml_ev_state_new();
+  var state: YamlEvState = YamlEvState.New();
   var rec: YamlEventRecorder = YamlEventRecorder{st: cast<YamlEvState>.pointer(& mut state)};
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   var reader: YamlReader = YamlReader.New();
   let r: Result<Unit, YamlError> = reader.Parse("[true, false, null, 42, hi]", rec, scratch);
   AssertTrue(r.IsOk());
@@ -245,9 +241,9 @@ func test_yaml_reader_seq_scalars() {
 
 @test
 func test_yaml_reader_nested_map() {
-  var state: YamlEvState = yaml_ev_state_new();
+  var state: YamlEvState = YamlEvState.New();
   var rec: YamlEventRecorder = YamlEventRecorder{st: cast<YamlEvState>.pointer(& mut state)};
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   var reader: YamlReader = YamlReader.New();
   let r: Result<Unit, YamlError> = reader.Parse(
     "dependencies:\n  stdlib:\n    path: ../stdlib\n",
@@ -274,10 +270,10 @@ func test_yaml_reader_nested_map() {
 
 @test
 func test_yaml_reader_handler_abort() {
-  var state: YamlEvState = yaml_ev_state_new();
+  var state: YamlEvState = YamlEvState.New();
   state.abort_at = 1;
   var rec: YamlEventRecorder = YamlEventRecorder{st: cast<YamlEvState>.pointer(& mut state)};
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   var reader: YamlReader = YamlReader.New();
   let r: Result<Unit, YamlError> = reader.Parse("name: x", rec, scratch);
   AssertTrue(r.IsErr());
@@ -289,17 +285,17 @@ func test_yaml_reader_handler_abort() {
 
 @test
 func test_yaml_reader_int_and_bool_root() {
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   var reader: YamlReader = YamlReader.New();
 
-  var state_i: YamlEvState = yaml_ev_state_new();
+  var state_i: YamlEvState = YamlEvState.New();
   var rec_i: YamlEventRecorder = YamlEventRecorder{st: cast<YamlEvState>.pointer(& mut state_i)};
   let ri: Result<Unit, YamlError> = reader.Parse("7", rec_i, scratch);
   AssertTrue(ri.IsOk());
   AssertEqI32(state_i.kinds.Get(0), kYamlEvInt64);
   AssertEqI64(state_i.ints.Get(0), 7 as int64);
 
-  var state_b: YamlEvState = yaml_ev_state_new();
+  var state_b: YamlEvState = YamlEvState.New();
   var rec_b: YamlEventRecorder = YamlEventRecorder{st: cast<YamlEvState>.pointer(& mut state_b)};
   let rb: Result<Unit, YamlError> = reader.Parse("true", rec_b, scratch);
   AssertTrue(rb.IsOk());
@@ -313,9 +309,9 @@ func test_yaml_reader_memstack_scratch() {
   AssertTrue(chunk != (ptr<int8>.null()));
   var stack: MemStack = MemStack{};
   stack.Init(chunk as *mut uint8, 8192 as uintptr);
-  let scratch: Allocator = yaml_scratch_from_stack(stack);
+  let scratch: Allocator = stack.AsAllocator();
   let mark: uintptr = stack.Mark();
-  var state: YamlEvState = yaml_ev_state_new();
+  var state: YamlEvState = YamlEvState.New();
   var rec: YamlEventRecorder = YamlEventRecorder{st: cast<YamlEvState>.pointer(& mut state)};
   var reader: YamlReader = YamlReader.New();
   let r: Result<Unit, YamlError> = reader.Parse("a: 1\nb: two\n", rec, scratch);
@@ -325,7 +321,7 @@ func test_yaml_reader_memstack_scratch() {
   AssertEqString(state.strings.Get(0), "a");
   AssertEqString(state.strings.Get(1), "b");
   AssertEqString(state.strings.Get(2), "two");
-  var state2: YamlEvState = yaml_ev_state_new();
+  var state2: YamlEvState = YamlEvState.New();
   var rec2: YamlEventRecorder = YamlEventRecorder{st: cast<YamlEvState>.pointer(& mut state2)};
   let r2: Result<Unit, YamlError> = reader.Parse("x: y", rec2, scratch);
   AssertTrue(r2.IsOk());
@@ -340,8 +336,8 @@ func test_yaml_reader_memarena_scratch() {
   AssertTrue(chunk != (ptr<int8>.null()));
   var arena: MemArena = MemArena{};
   arena.Init(chunk as *mut uint8, 8192 as uintptr);
-  let scratch: Allocator = yaml_scratch_from_arena(arena);
-  var state: YamlEvState = yaml_ev_state_new();
+  let scratch: Allocator = arena.AsAllocator();
+  var state: YamlEvState = YamlEvState.New();
   var rec: YamlEventRecorder = YamlEventRecorder{st: cast<YamlEvState>.pointer(& mut state)};
   var reader: YamlReader = YamlReader.New();
   let r: Result<Unit, YamlError> = reader.Parse("name: x", rec, scratch);

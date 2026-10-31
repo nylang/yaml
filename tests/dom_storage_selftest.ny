@@ -13,8 +13,8 @@ func test_yaml_dom_frame_initializes_poisoned_raw_storage() {
   }
 
   memset(raw as *mut uint8, 85u8, size as uintptr);
-  let durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  let frame: *mut YamlDomFrame = yaml_dom_frame_initialize(raw, durable, true, ptr<YamlDomFrame>.null());
+  let durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  let frame: *mut YamlDomFrame = YamlDomFrame.Initialize(raw, durable, true, ptr<YamlDomFrame>.null());
   unsafe {
     AssertTrue((*frame).is_map);
     AssertEqI32((*frame).map.Len(), 0);
@@ -24,5 +24,5 @@ func test_yaml_dom_frame_initializes_poisoned_raw_storage() {
     AssertTrue((*frame).prev == ptr<YamlDomFrame>.null());
   }
 
-  yaml_dom_frame_free(frame);
+  YamlDomFrame.Release(frame);
 }

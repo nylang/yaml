@@ -9,36 +9,36 @@ part of YamlTests;
  * @note m_v0.18_p3: uses YamlDocument.Parse (free Parse deleted).
  */
 
-func yaml_path_exists(path: string) -> bool {
-  let f: File = File.New(path);
-
-  return f.Exists();
+/** A package corpus fixture retains its requested and resolved path identity. */
+struct YamlFixture {
+  path: string;
+  relative: string;
 }
 
-func yaml_resolve_testdata(rel: string) -> string {
+static method(YamlFixture) Resolve(rel: string) -> YamlFixture {
   // Resolve package-owned fixtures from either the package or workspace cwd.
   var prefix: string = "";
   var depth: int32 = 0;
   while depth < 8 {
     let candidate: string = prefix.Concat(rel);
-    if yaml_path_exists(candidate) {
-      return candidate;
+    if File.New(candidate).Exists() {
+      return YamlFixture{path: candidate, relative: rel};
     }
 
     let workspace: string = prefix.Concat("third_party/yaml/").Concat(rel);
-    if yaml_path_exists(workspace) {
-      return workspace;
+    if File.New(workspace).Exists() {
+      return YamlFixture{path: workspace, relative: rel};
     }
 
     prefix = "../".Concat(prefix);
     depth = depth + 1;
   }
 
-  return copy("");
+  return YamlFixture{path: "", relative: rel};
 }
 
-func yaml_read_testdata(rel: string) -> string {
-  let path: string = yaml_resolve_testdata(rel);
+method(YamlFixture) Read() -> string {
+  let path: string = self.path;
   if path.length <= 0 {
     return copy("");
   }
@@ -57,32 +57,32 @@ func yaml_read_testdata(rel: string) -> string {
   return copy(t as string);
 }
 
-func yaml_parse_testdata(rel: string) -> Result<YamlDocument, YamlError> {
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  let path: string = yaml_resolve_testdata(rel);
+method(YamlFixture) Parse() -> Result<YamlDocument, YamlError> {
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  let path: string = self.path;
   if path.length <= 0 {
-    return YamlDocument.ParseFile(rel, durable, scratch);
+    return YamlDocument.ParseFile(self.relative, durable, scratch);
   }
 
   return YamlDocument.ParseFile(path, durable, scratch);
 }
 
-func yaml_assert_dump_match(yaml_rel: string, dump_rel: string) {
-  let src: string = yaml_read_testdata(yaml_rel);
+method(YamlFixture) AssertDumpMatch(dump_rel: string) {
+  let src: string = self.Read();
   if src.length <= 0 {
-    AssertTrueMsg(false, yaml_rel);
+    AssertTrueMsg(false, self.relative);
     return;
   }
 
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   let pr: Result<YamlDocument, YamlError> = YamlDocument.Parse(src, durable, scratch);
   AssertTrue(pr.IsOk());
   let doc_opt: YamlDocument? = pr.get_if<YamlDocument>();
   AssertTrue(doc_opt != nil);
-  let got: string = YamlCanonicalDump((doc_opt as YamlDocument).Root());
-  let want: string = yaml_read_testdata(dump_rel);
+  let got: string = ((doc_opt as YamlDocument).Root()).CanonicalDump();
+  let want: string = YamlFixture.Resolve(dump_rel).Read();
   if want.length <= 0 {
     AssertTrueMsg(false, dump_rel);
     return;
@@ -91,10 +91,10 @@ func yaml_assert_dump_match(yaml_rel: string, dump_rel: string) {
   AssertEqString(got, want);
 }
 
-func yaml_assert_parse_err_file(rel: string) {
-  let src: string = yaml_read_testdata(rel);
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+method(YamlFixture) AssertParseError() {
+  let src: string = self.Read();
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   let pr: Result<YamlDocument, YamlError> = YamlDocument.Parse(src, durable, scratch);
   AssertTrue(pr.IsErr());
 }
@@ -103,20 +103,20 @@ func yaml_assert_parse_err_file(rel: string) {
  * @brief §1.5 tree equality: Parse → Emit → Parse; dumps must match (m_v0.18_p4).
  * @note Emit takes `Yaml` by value — re-parse `src` for the emit walk.
  */
-func yaml_assert_corpus_round_trip(yaml_rel: string) {
-  let src: string = yaml_read_testdata(yaml_rel);
+method(YamlFixture) AssertRoundTrip() {
+  let src: string = self.Read();
   if src.length <= 0 {
-    AssertTrueMsg(false, yaml_rel);
+    AssertTrueMsg(false, self.relative);
     return;
   }
 
-  var durable: Allocator = CreateAllocator(0 as int64, 8 as int64);
-  var scratch: Allocator = CreateAllocator(0 as int64, 8 as int64);
+  var durable: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
+  var scratch: Allocator = Allocator.ProcessHeap(0 as int64, 8 as int64);
   let pr: Result<YamlDocument, YamlError> = YamlDocument.Parse(src, durable, scratch);
   AssertTrue(pr.IsOk());
   let doc_opt: YamlDocument? = pr.get_if<YamlDocument>();
   AssertTrue(doc_opt != nil);
-  let before: string = YamlCanonicalDump((doc_opt as YamlDocument).Root());
+  let before: string = ((doc_opt as YamlDocument).Root()).CanonicalDump();
   let pr2: Result<YamlDocument, YamlError> = YamlDocument.Parse(src, durable, scratch);
   AssertTrue(pr2.IsOk());
   let doc2_opt: YamlDocument? = pr2.get_if<YamlDocument>();
@@ -126,6 +126,6 @@ func yaml_assert_corpus_round_trip(yaml_rel: string) {
   AssertTrue(pr3.IsOk());
   let doc3_opt: YamlDocument? = pr3.get_if<YamlDocument>();
   AssertTrue(doc3_opt != nil);
-  let after: string = YamlCanonicalDump((doc3_opt as YamlDocument).Root());
+  let after: string = ((doc3_opt as YamlDocument).Root()).CanonicalDump();
   AssertEqString(before, after);
 }

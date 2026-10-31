@@ -15,15 +15,6 @@ import "ntest:ntest.ny";
  * @note Comment is skipped and has no kind. Values are documented in m_v0.7_p1 Record.
  */
 
-/**
- * @brief One scanner token. `line` / `column` are 1-based (token start).
- */
-pub struct YamlToken {
-  kind: int32;
-  lexeme: string;
-  line: int32;
-  column: int32;
-}
 
 struct YamlScanner {
   text_data: *const int8;
@@ -50,7 +41,7 @@ method(YamlScanner) Src() -> string {
   return string.ViewFrom(self.text_data, self.text_len);
 }
 
-func yaml_is_break(b: int32) -> bool {
+static method(YamlScanner) IsBreak(b: int32) -> bool {
   if b == 10 {
     return true;
   }
@@ -58,20 +49,20 @@ func yaml_is_break(b: int32) -> bool {
   return b == 13;
 }
 
-func yaml_is_space(b: int32) -> bool {
+static method(YamlScanner) IsSpace(b: int32) -> bool {
   return b == 32;
 }
 
-func yaml_is_blank(b: int32) -> bool {
-  if yaml_is_space(b) {
+static method(YamlScanner) IsBlank(b: int32) -> bool {
+  if YamlScanner.IsSpace(b) {
     return true;
   }
 
   return b == 9;
 }
 
-func yaml_is_hex(b: int32) -> bool {
-  if YamlIsDigit(b) {
+static method(YamlScanner) IsHex(b: int32) -> bool {
+  if YamlToken.IsDigit(b) {
     return true;
   }
 
@@ -86,8 +77,8 @@ func yaml_is_hex(b: int32) -> bool {
   return false;
 }
 
-func yaml_hex_val(b: int32) -> int32 {
-  if YamlIsDigit(b) {
+static method(YamlScanner) HexValue(b: int32) -> int32 {
+  if YamlToken.IsDigit(b) {
     return b - 48;
   }
 
@@ -102,57 +93,17 @@ func yaml_hex_val(b: int32) -> int32 {
   return 0;
 }
 
-func yaml_empty_view() -> string {
-  return "";
-}
-
-func yaml_byte_string(b: uint8) -> string {
+/** @brief Retain one raw source byte as a language-owned string.
+ * @returns A one-byte string including NUL when supplied. */
+pub static method(YamlStr) FromByte(b: uint8) -> string {
   var out: string = string.Alloc(1);
   var src: uint8 = b;
-  memcpy((out.data as *mut uint8),(&src) as *const uint8, 1 as uintptr);
+  memcpy((out.data as *mut uint8),(&src) as *const uint8, 1up);
 
   return out;
 }
 
-func yaml_codepoint_utf8(cp: int32) -> string {
-  if cp <= 0 {
-    return yaml_empty_view();
-  }
-
-  if cp < 128 {
-    return yaml_byte_string(cp as uint8);
-  }
-
-  if cp <= 2047 {
-    var out: string = string.Alloc(2);
-    var b0: uint8 = (192 + (cp / 64)) as uint8;
-    var b1: uint8 = (128 + (cp - (cp / 64) * 64)) as uint8;
-    memcpy((out.data as *mut uint8),(&b0) as *const uint8, 1 as uintptr);
-    let p1: *mut uint8 = (((out.data as *mut int8) as intptr) + (1 as intptr)) as *mut uint8;
-    memcpy(p1,(&b1) as *const uint8, 1 as uintptr);
-
-    return out;
-  }
-
-  if cp <= 65535 {
-    var out: string = string.Alloc(3);
-    var b0: uint8 = (224 + (cp / 4096)) as uint8;
-    let r1: int32 = cp - (cp / 4096) * 4096;
-    var b1: uint8 = (128 + (r1 / 64)) as uint8;
-    var b2: uint8 = (128 + (r1 - (r1 / 64) * 64)) as uint8;
-    memcpy((out.data as *mut uint8),(&b0) as *const uint8, 1 as uintptr);
-    let p1: *mut uint8 = (((out.data as *mut int8) as intptr) + (1 as intptr)) as *mut uint8;
-    memcpy(p1,(&b1) as *const uint8, 1 as uintptr);
-    let p2: *mut uint8 = (((out.data as *mut int8) as intptr) + (2 as intptr)) as *mut uint8;
-    memcpy(p2,(&b2) as *const uint8, 1 as uintptr);
-
-    return out;
-  }
-
-  return yaml_empty_view();
-}
-
-func yaml_is_flow_indicator(b: int32) -> bool {
+static method(YamlScanner) IsFlowIndicator(b: int32) -> bool {
   if b == 44 {
     return true;
   }
@@ -172,17 +123,17 @@ func yaml_is_flow_indicator(b: int32) -> bool {
   return b == 125;
 }
 
-func yaml_is_colon_break(text: string, pos: int32) -> bool {
-  let n: int32 = YamlByteAt(text, pos + 1);
+static method(YamlScanner) IsColonBreak(text: string, pos: int32) -> bool {
+  let n: int32 = text.ByteAt(pos + 1);
   if n < 0 {
     return true;
   }
 
-  if yaml_is_break(n) {
+  if YamlScanner.IsBreak(n) {
     return true;
   }
 
-  if yaml_is_blank(n) {
+  if YamlScanner.IsBlank(n) {
     return true;
   }
 
@@ -190,7 +141,7 @@ func yaml_is_colon_break(text: string, pos: int32) -> bool {
     return true;
   }
 
-  return yaml_is_flow_indicator(n);
+  return YamlScanner.IsFlowIndicator(n);
 }
 
 // Classify plain scalars before publication; quoted strings bypass implicit scalar interpretation.
@@ -211,40 +162,37 @@ pub struct YamlScanResult {
   error: YamlError;
 }
 
-func yaml_empty_i32() -> Array<int32> {
-  return Array<int32>{};
-}
-
-func yaml_empty_indents() -> Array<int32> {
-  return Array<int32>{};
-}
-
 /**
  * @brief Initialize an empty token result without parser or document state.
  * @returns A valid empty token result borrowing no source payload.
  */
-pub func MakeEmptyScanResult() -> YamlScanResult {
+pub static method(YamlScanResult) New() -> YamlScanResult {
   return YamlScanResult{
     ok: true,
     src_data: 0 as *const int8,
     src_len: 0,
-    kinds: yaml_empty_i32(),
-    lines: yaml_empty_i32(),
-    columns: yaml_empty_i32(),
-    lex_starts: yaml_empty_i32(),
-    lex_lens: yaml_empty_i32(),
-    error: YamlError{line: 0, column: 0, message: yaml_empty_view()}
+    kinds: Array<int32>{},
+    lines: Array<int32>{},
+    columns: Array<int32>{},
+    lex_starts: Array<int32>{},
+    lex_lens: Array<int32>{},
+    error: YamlError{line: 0, column: 0, message: ""}
   };
 }
 
+/** @brief Count the retained scanner tokens.
+ * @returns Number of tokens, including structural/end tokens. */
 pub method(YamlScanResult) Len() -> int32 {
   return self.kinds.Len();
 }
 
+/** @brief Read a token while borrowing its lexeme from the live source window.
+ * @param i Valid token index smaller than Len.
+ * @returns A token whose lexeme expires with the original source bytes. */
 pub method(YamlScanResult) Get(i: int32) -> YamlToken {
   let start: int32 = self.lex_starts.Get(i);
   let n: int32 = self.lex_lens.Get(i);
-  var lex: string = yaml_empty_view();
+  var lex: string = "";
   if n > 0 {
     let p: *const int8 = ((self.src_data as intptr) + (start as intptr)) as *const int8;
     lex = string.ViewFrom(p, n);
@@ -295,10 +243,10 @@ method(YamlScanner) EmitPunct(kind: int32) -> void {
 }
 
 method(YamlScanner) ConsumeNewline() -> void {
-  let b: int32 = YamlByteAt(self.Src(), self.pos);
+  let b: int32 = (self.Src()).ByteAt(self.pos);
   if b == 13 {
     self.pos = self.pos + 1;
-    let n: int32 = YamlByteAt(self.Src(), self.pos);
+    let n: int32 = (self.Src()).ByteAt(self.pos);
     if n == 10 {
       self.pos = self.pos + 1;
     }
@@ -316,8 +264,8 @@ method(YamlScanner) ConsumeNewline() -> void {
 
 method(YamlScanner) SkipCommentBody() -> void {
   while self.pos < self.text_len {
-    let b: int32 = YamlByteAt(self.Src(), self.pos);
-    if yaml_is_break(b) {
+    let b: int32 = (self.Src()).ByteAt(self.pos);
+    if YamlScanner.IsBreak(b) {
       return;
     }
 
@@ -334,8 +282,8 @@ method(YamlScanner) SkipCommentBody() -> void {
 
 method(YamlScanner) SkipInlineSpace() -> void {
   while self.pos < self.text_len {
-    let b: int32 = YamlByteAt(self.Src(), self.pos);
-    if yaml_is_space(b) {
+    let b: int32 = (self.Src()).ByteAt(self.pos);
+    if YamlScanner.IsSpace(b) {
       self.pos = self.pos + 1;
       self.column = self.column + 1;
       continue;
@@ -356,15 +304,15 @@ method(YamlScanner) SkipBom() -> void {
     return;
   }
 
-  if YamlByteAt(self.Src(), 0) != 239 {
+  if (self.Src()).ByteAt(0) != 239 {
     return;
   }
 
-  if YamlByteAt(self.Src(), 1) != 187 {
+  if (self.Src()).ByteAt(1) != 187 {
     return;
   }
 
-  if YamlByteAt(self.Src(), 2) != 191 {
+  if (self.Src()).ByteAt(2) != 191 {
     return;
   }
 
@@ -418,8 +366,8 @@ method(YamlScanner) CloseIndents() -> void {
 method(YamlScanner) HandleLineStart() -> void {
   var indent: int32 = 0;
   while self.pos < self.text_len {
-    let b: int32 = YamlByteAt(self.Src(), self.pos);
-    if yaml_is_space(b) {
+    let b: int32 = (self.Src()).ByteAt(self.pos);
+    if YamlScanner.IsSpace(b) {
       self.pos = self.pos + 1;
       self.column = self.column + 1;
       indent = indent + 1;
@@ -439,8 +387,8 @@ method(YamlScanner) HandleLineStart() -> void {
     return;
   }
 
-  let b: int32 = YamlByteAt(self.Src(), self.pos);
-  if yaml_is_break(b) {
+  let b: int32 = (self.Src()).ByteAt(self.pos);
+  if YamlScanner.IsBreak(b) {
     self.ConsumeNewline();
     return;
   }
@@ -460,20 +408,20 @@ method(YamlScanner) LooksLikeDocMarker() -> bool {
     return false;
   }
 
-  let b0: int32 = YamlByteAt(self.Src(), self.pos);
-  let b1: int32 = YamlByteAt(self.Src(), self.pos + 1);
-  let b2: int32 = YamlByteAt(self.Src(), self.pos + 2);
-  let b3: int32 = YamlByteAt(self.Src(), self.pos + 3);
+  let b0: int32 = (self.Src()).ByteAt(self.pos);
+  let b1: int32 = (self.Src()).ByteAt(self.pos + 1);
+  let b2: int32 = (self.Src()).ByteAt(self.pos + 2);
+  let b3: int32 = (self.Src()).ByteAt(self.pos + 3);
   if (b0 == 45) && (b1 == 45) && (b2 == 45) {
     if b3 < 0 {
       return true;
     }
 
-    if yaml_is_break(b3) {
+    if YamlScanner.IsBreak(b3) {
       return true;
     }
 
-    if yaml_is_blank(b3) {
+    if YamlScanner.IsBlank(b3) {
       return true;
     }
 
@@ -485,11 +433,11 @@ method(YamlScanner) LooksLikeDocMarker() -> bool {
       return true;
     }
 
-    if yaml_is_break(b3) {
+    if YamlScanner.IsBreak(b3) {
       return true;
     }
 
-    if yaml_is_blank(b3) {
+    if YamlScanner.IsBlank(b3) {
       return true;
     }
 
@@ -506,7 +454,7 @@ method(YamlScanner) ScanDoubleQuoted() -> void {
   self.column = self.column + 1;
   let inner_start: int32 = self.pos;
   while self.pos < self.text_len {
-    let b: int32 = YamlByteAt(self.Src(), self.pos);
+    let b: int32 = (self.Src()).ByteAt(self.pos);
     if b == 34 {
       let inner_len: int32 = self.pos - inner_start;
       self.Emit(kYamlTokStr, inner_start, inner_len, start_line, start_col);
@@ -535,7 +483,7 @@ method(YamlScanner) ScanDoubleQuoted() -> void {
       continue;
     }
 
-    if yaml_is_break(b) {
+    if YamlScanner.IsBreak(b) {
       self.ConsumeNewline();
       continue;
     }
@@ -560,9 +508,9 @@ method(YamlScanner) ScanSingleQuoted() -> void {
   self.column = self.column + 1;
   let inner_start: int32 = self.pos;
   while self.pos < self.text_len {
-    let b: int32 = YamlByteAt(self.Src(), self.pos);
+    let b: int32 = (self.Src()).ByteAt(self.pos);
     if b == 39 {
-      let n: int32 = YamlByteAt(self.Src(), self.pos + 1);
+      let n: int32 = (self.Src()).ByteAt(self.pos + 1);
       if n == 39 {
         self.pos = self.pos + 2;
         self.column = self.column + 2;
@@ -577,7 +525,7 @@ method(YamlScanner) ScanSingleQuoted() -> void {
       return;
     }
 
-    if yaml_is_break(b) {
+    if YamlScanner.IsBreak(b) {
       self.ConsumeNewline();
       continue;
     }
@@ -600,26 +548,26 @@ method(YamlScanner) ScanPlain() -> void {
   let start_line: int32 = self.line;
   let start_col: int32 = self.column;
   while self.pos < self.text_len {
-    let b: int32 = YamlByteAt(self.Src(), self.pos);
-    if yaml_is_break(b) {
+    let b: int32 = (self.Src()).ByteAt(self.pos);
+    if YamlScanner.IsBreak(b) {
       break;
     }
 
     if b == 58 {
-      if yaml_is_colon_break(self.Src(), self.pos) {
+      if YamlScanner.IsColonBreak(self.Src(), self.pos) {
         break;
       }
     } else {
       if self.flow_depth > 0 {
-        if yaml_is_flow_indicator(b) {
+        if YamlScanner.IsFlowIndicator(b) {
           break;
         }
       }
 
       if b == 35 {
         if start < self.pos {
-          let prev: int32 = YamlByteAt(self.Src(), self.pos - 1);
-          if yaml_is_blank(prev) {
+          let prev: int32 = (self.Src()).ByteAt(self.pos - 1);
+          if YamlScanner.IsBlank(prev) {
             break;
           }
         } else {
@@ -627,23 +575,23 @@ method(YamlScanner) ScanPlain() -> void {
         }
       }
 
-      if yaml_is_blank(b) {
+      if YamlScanner.IsBlank(b) {
         var j: int32 = self.pos;
         while j < self.text_len {
-          let w: int32 = YamlByteAt(self.Src(), j);
-          if !yaml_is_blank(w) {
+          let w: int32 = (self.Src()).ByteAt(j);
+          if !YamlScanner.IsBlank(w) {
             break;
           }
 
           j = j + 1;
         }
 
-        let nxt: int32 = YamlByteAt(self.Src(), j);
+        let nxt: int32 = (self.Src()).ByteAt(j);
         if nxt < 0 {
           break;
         }
 
-        if yaml_is_break(nxt) {
+        if YamlScanner.IsBreak(nxt) {
           break;
         }
 
@@ -652,13 +600,13 @@ method(YamlScanner) ScanPlain() -> void {
         }
 
         if self.flow_depth > 0 {
-          if yaml_is_flow_indicator(nxt) {
+          if YamlScanner.IsFlowIndicator(nxt) {
             break;
           }
         }
 
         if nxt == 58 {
-          if yaml_is_colon_break(self.Src(), j) {
+          if YamlScanner.IsColonBreak(self.Src(), j) {
             break;
           }
         }
@@ -683,8 +631,8 @@ method(YamlScanner) ScanPlain() -> void {
 
   var end: int32 = self.pos;
   while end > start {
-    let last: int32 = YamlByteAt(self.Src(), end - 1);
-    if !yaml_is_blank(last) {
+    let last: int32 = (self.Src()).ByteAt(end - 1);
+    if !YamlScanner.IsBlank(last) {
       break;
     }
 
@@ -694,7 +642,7 @@ method(YamlScanner) ScanPlain() -> void {
   let nlex: int32 = end - start;
   let p: *const int8 = ((self.text_data as intptr) + (start as intptr)) as *const int8;
   let lexeme: string = string.ViewFrom(p, nlex);
-  let kind: int32 = YamlClassifyPlain(lexeme);
+  let kind: int32 = YamlToken.Classify(lexeme);
   self.Emit(kind, start, nlex, start_line, start_col);
   self.content_bol = false;
 }
@@ -705,7 +653,7 @@ method(YamlScanner) ScanToken() -> void {
     return;
   }
 
-  let b: int32 = YamlByteAt(self.Src(), self.pos);
+  let b: int32 = (self.Src()).ByteAt(self.pos);
   if b == 38 {
     self.FailHere("anchors and aliases are not supported in v1");
     return;
@@ -732,8 +680,8 @@ method(YamlScanner) ScanToken() -> void {
   }
 
   if b == 63 {
-    let n: int32 = YamlByteAt(self.Src(), self.pos + 1);
-    if (n < 0) || yaml_is_blank(n) || yaml_is_break(n) {
+    let n: int32 = (self.Src()).ByteAt(self.pos + 1);
+    if (n < 0) || YamlScanner.IsBlank(n) || YamlScanner.IsBreak(n) {
       self.FailHere("complex keys are not supported in v1");
       return;
     }
@@ -780,8 +728,8 @@ method(YamlScanner) ScanToken() -> void {
   }
 
   if b == 45 {
-    let n: int32 = YamlByteAt(self.Src(), self.pos + 1);
-    if (n < 0) || yaml_is_blank(n) || yaml_is_break(n) || yaml_is_flow_indicator(n) {
+    let n: int32 = (self.Src()).ByteAt(self.pos + 1);
+    if (n < 0) || YamlScanner.IsBlank(n) || YamlScanner.IsBreak(n) || YamlScanner.IsFlowIndicator(n) {
       self.EmitPunct(kYamlTokDash);
       return;
     }
@@ -812,7 +760,7 @@ pub method(YamlScanResult) Tokenize(text: string) -> void {
   self.lex_lens.Clear();
   self.src_data = text.data as *const int8;
   self.src_len = text.length;
-  self.error = YamlError{line: 0, column: 0, message: yaml_empty_view()};
+  self.error = YamlError{line: 0, column: 0, message: ""};
   var sc: YamlScanner = YamlScanner{
     text_data: text.data as *const int8,
     text_len: text.length,
@@ -826,12 +774,12 @@ pub method(YamlScanResult) Tokenize(text: string) -> void {
     err_line: 1,
     err_column: 1,
     err_message: string.ViewFrom(0 as *const int8, 0),
-    kinds: yaml_empty_i32(),
-    lines: yaml_empty_i32(),
-    columns: yaml_empty_i32(),
-    lex_starts: yaml_empty_i32(),
-    lex_lens: yaml_empty_i32(),
-    indents: yaml_empty_indents()
+    kinds: Array<int32>{},
+    lines: Array<int32>{},
+    columns: Array<int32>{},
+    lex_starts: Array<int32>{},
+    lex_lens: Array<int32>{},
+    indents: Array<int32>{}
   };
   sc.indents.Push(0);
   sc.SkipBom();
@@ -854,8 +802,8 @@ pub method(YamlScanResult) Tokenize(text: string) -> void {
       break;
     }
 
-    let b: int32 = YamlByteAt(sc.Src(), sc.pos);
-    if yaml_is_break(b) {
+    let b: int32 = (sc.Src()).ByteAt(sc.pos);
+    if YamlScanner.IsBreak(b) {
       sc.ConsumeNewline();
       continue;
     }
@@ -931,5 +879,5 @@ pub method(YamlScanResult) QuoteAt(index: int32) -> int32 {
 
   let source: string = string.ViewFrom(self.src_data, self.src_len);
 
-  return YamlByteAt(source, start - 1);
+  return source.ByteAt(start - 1);
 }

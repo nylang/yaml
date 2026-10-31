@@ -1,5 +1,8 @@
 # yaml
 
+Development API 0.19.0 requires a matching Nyra SDK 1.0.5 or newer.
+Rebuild precompiled consumers against the matching interfaces and runtime.
+
 Nyra YAML parser and document model. Import `yaml:yaml.ny`.
 
 See [MIGRATION.md](MIGRATION.md) for source history and the current workspace
@@ -48,3 +51,27 @@ Licensed under the [MIT License](LICENSE).
 ## Module architecture
 
 See [module responsibilities, ownership and dependency boundaries](ARCHITECTURE.md).
+
+## Coding-rule lint
+
+`package.yaml` selects the portable `lint.yaml` profile. It requires the
+1.0.5 P7 analyzer candidate (or a later SDK containing those rules); the
+published 1.0.4 analyzer does not implement them. `import: default` inherits
+the selected workspace profile when present, otherwise analyzer SDK defaults.
+No sibling source path is required. Run `nyra-analyzer lint . --json`. Existing
+violations remain migration debt; lint success is not runtime qualification.
+
+## 1.0.5 source API migration
+
+This working source requires the 1.0.5 kernel capabilities (checked string byte
+access and allocator-owned string views); it is not compatible with an unchanged
+1.0.4 SDK. No new package tag or release is claimed. Rebuild precompiled users
+with matching interfaces and runtime objects. Required native test/ABI entry
+points remain free declarations; product and implementation operations now use
+real value, cursor, writer and DOM-state owners. No legacy API alias is retained.
+
+Use `node.AsInt()` / `AsMap()` / `AsSeq()`, `left.Equals(right)` and
+`node.CanonicalDump()` instead of YamlAs*, YamlTreesEqual and YamlCanonicalDump.
+YamlReader/Document/Writer retain their existing public parse/event/emit surface.
+Internal syntax operations remain outside the product barrel. Token vocabulary
+now lives in the lower lexical module; parser and scanner cursors remain private.

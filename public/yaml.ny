@@ -200,8 +200,8 @@ pub method(YamlInt) I64() -> int64 {
  * @brief Read a representable signed integer from the document node.
  * @returns The matching payload, or nil when the node cannot be represented by that accessor.
  */
-pub func YamlAsInt(doc: Yaml) -> int64? {
-  let iv: YamlInt? = doc.node.get_if<YamlInt>();
+pub method(Yaml) AsInt() -> int64? {
+  let iv: YamlInt? = self.node.get_if<YamlInt>();
   if iv == nil {
     return nil;
   }
@@ -213,16 +213,16 @@ pub func YamlAsInt(doc: Yaml) -> int64? {
  * @brief Read a mapping from the document node.
  * @returns The matching payload, or nil when the node cannot be represented by that accessor.
  */
-pub func YamlAsMap(doc: Yaml) -> YamlMap? {
-  return doc.node.get_if<YamlMap>();
+pub method(Yaml) AsMap() -> YamlMap? {
+  return self.node.get_if<YamlMap>();
 }
 
 /**
  * @brief Read a sequence from the document node.
  * @returns The matching payload, or nil when the node cannot be represented by that accessor.
  */
-pub func YamlAsSeq(doc: Yaml) -> YamlSeq? {
-  return doc.node.get_if<YamlSeq>();
+pub method(Yaml) AsSeq() -> YamlSeq? {
+  return self.node.get_if<YamlSeq>();
 }
 
 /**
@@ -279,4 +279,81 @@ pub method(YamlSeq) Get(index: int32) -> Yaml? {
  */
 pub method(YamlSeq) Len() -> int32 {
   return self.items.Len();
+}
+
+/** @brief Retain a YAML failure independently of parser scratch storage.
+ * @returns A diagnostic owning its message through language string lifetime. */
+pub static method(YamlError) New(line: int32, column: int32, message: string) -> YamlError {
+  return YamlError{line: line, column: column, message: copy(message)};
+}
+
+/** @brief Describe a file failure using the existing YAML diagnostic wording.
+ * @returns Stable English detail without retaining platform state. */
+pub static method(YamlError) IoDescription(error: IoError) -> string {
+  if error == IoError.NotFound {
+    return "file not found";
+  }
+
+  if error == IoError.PermissionDenied {
+    return "permission denied";
+  }
+
+  if error == IoError.IsADirectory {
+    return "path is a directory";
+  }
+
+  if error == IoError.NotADirectory {
+    return "path is not a directory";
+  }
+
+  if error == IoError.InvalidArgument {
+    return "invalid path";
+  }
+
+  return "I/O error";
+}
+
+/**
+ * @brief Read a string scalar without coercing other YAML kinds.
+ * @returns Owned text for a string node, including empty text; nil for every other kind.
+ */
+pub method(Yaml) AsStr() -> string? {
+  let value: YamlStr? = self.node.get_if<YamlStr>();
+  if value == nil {
+    return nil;
+  }
+
+  return (value as YamlStr).Text();
+}
+
+/**
+ * @brief Read an optional string-valued mapping entry.
+ * @param key Mapping key borrowed during lookup.
+ * @returns Owned string payload; empty text for missing, non-string or empty values.
+ */
+pub method(YamlMap) TextOrEmpty(key: string) -> string {
+  let value: Yaml? = self.Get(key);
+  if value == nil {
+    return "";
+  }
+
+  let text: string? = (value as Yaml).AsStr();
+  if text == nil {
+    return "";
+  }
+
+  return text as string;
+}
+
+/**
+ * @brief Read a boolean scalar without coercing other YAML kinds.
+ * @returns The stored true or false value; nil for every non-boolean kind.
+ */
+pub method(Yaml) AsBool() -> bool? {
+  let value: YamlBool? = self.node.get_if<YamlBool>();
+  if value == nil {
+    return nil;
+  }
+
+  return (value as YamlBool).Value();
 }

@@ -13,11 +13,12 @@ import "private/lexical.ny";
  * @note Same TU as `Yaml` layouts so `holds` / `get_if` on `Yaml.node` resolve.
  */
 
-struct YamlEmitter {
+/** @brief Stateful YAML text encoder; owns output, not parser or DOM state. */
+pub struct YamlEmitter {
   buf: StringBuffer;
 }
 
-func yaml_plain_char(b: int32) -> bool {
+static method(YamlEmitter) PlainCharacter(b: int32) -> bool {
   if (b >= 65) && (b <= 90) {
     return true;
   }
@@ -49,7 +50,7 @@ func yaml_plain_char(b: int32) -> bool {
   return b == 45;
 }
 
-func yaml_emit_plain_ok(s: string) -> bool {
+static method(YamlEmitter) CanEmitPlain(s: string) -> bool {
   let n: int32 = s.length;
   if n <= 0 {
     return false;
@@ -57,7 +58,7 @@ func yaml_emit_plain_ok(s: string) -> bool {
 
   var i: int32 = 0;
   while i < n {
-    if !yaml_plain_char(YamlParseByte(s, i)) {
+    if !YamlEmitter.PlainCharacter(s.ByteAt(i)) {
       return false;
     }
 
@@ -68,7 +69,7 @@ func yaml_emit_plain_ok(s: string) -> bool {
     return false;
   }
 
-  let k: int32 = YamlClassifyPlain(s);
+  let k: int32 = YamlToken.Classify(s);
   if k == kYamlTokNull {
     return false;
   }
@@ -82,28 +83,30 @@ func yaml_emit_plain_ok(s: string) -> bool {
 
 // Escape payload bytes independently of YAML structure so scalar content cannot introduce a new node.
 
-func yaml_emit_scalar_text(s: string) -> string {
-  if yaml_emit_plain_ok(s) {
+static method(YamlEmitter) ScalarText(s: string) -> string {
+  if YamlEmitter.CanEmitPlain(s) {
     return s;
   }
 
-  return YamlEmitQuote(s);
+  return YamlStr.Quote(s);
 }
 
 // Render the signed minimum without a signed negation overflow.
 
 // Compare parsed tree content rather than serialized layout when checking YAML round trips.
-func yaml_trees_equal(a: Yaml, b: Yaml) -> bool {
-  if a.node.holds<YamlNull>() {
+/** @brief Compare retained YAML kinds, scalar values and collection structure.
+ * @returns True for recursively equal values. */
+pub method(Yaml) Equals(b: Yaml) -> bool {
+  if self.node.holds<YamlNull>() {
     return b.node.holds<YamlNull>();
   }
 
-  if a.node.holds<YamlBool>() {
+  if self.node.holds<YamlBool>() {
     if !b.node.holds<YamlBool>() {
       return false;
     }
 
-    let ab: YamlBool? = a.node.get_if<YamlBool>();
+    let ab: YamlBool? = self.node.get_if<YamlBool>();
     let bb: YamlBool? = b.node.get_if<YamlBool>();
     if ab == nil {
       return false;
@@ -119,12 +122,12 @@ func yaml_trees_equal(a: Yaml, b: Yaml) -> bool {
     return abv.value == bbv.value;
   }
 
-  if a.node.holds<YamlInt>() {
+  if self.node.holds<YamlInt>() {
     if !b.node.holds<YamlInt>() {
       return false;
     }
 
-    let ai: YamlInt? = a.node.get_if<YamlInt>();
+    let ai: YamlInt? = self.node.get_if<YamlInt>();
     let bi: YamlInt? = b.node.get_if<YamlInt>();
     if ai == nil {
       return false;
@@ -140,12 +143,12 @@ func yaml_trees_equal(a: Yaml, b: Yaml) -> bool {
     return aiv.value == biv.value;
   }
 
-  if a.node.holds<YamlStr>() {
+  if self.node.holds<YamlStr>() {
     if !b.node.holds<YamlStr>() {
       return false;
     }
 
-    let asv: YamlStr? = a.node.get_if<YamlStr>();
+    let asv: YamlStr? = self.node.get_if<YamlStr>();
     let bsv: YamlStr? = b.node.get_if<YamlStr>();
     if asv == nil {
       return false;
@@ -161,12 +164,12 @@ func yaml_trees_equal(a: Yaml, b: Yaml) -> bool {
     return (asvv.value == bsvv.value);
   }
 
-  if a.node.holds<YamlSeq>() {
+  if self.node.holds<YamlSeq>() {
     if !b.node.holds<YamlSeq>() {
       return false;
     }
 
-    let aseq: YamlSeq? = a.node.get_if<YamlSeq>();
+    let aseq: YamlSeq? = self.node.get_if<YamlSeq>();
     let bseq: YamlSeq? = b.node.get_if<YamlSeq>();
     if aseq == nil {
       return false;
@@ -188,7 +191,7 @@ func yaml_trees_equal(a: Yaml, b: Yaml) -> bool {
       unsafe {
         let pa: *mut Yaml = &mut sa.items.buf[i];
         let pb: *mut Yaml = &mut sb.items.buf[i];
-        if !yaml_trees_equal((*pa),(*pb)) {
+        if !((*pa)).Equals((*pb)) {
           return false;
         }
       }
@@ -199,12 +202,12 @@ func yaml_trees_equal(a: Yaml, b: Yaml) -> bool {
     return true;
   }
 
-  if a.node.holds<YamlMap>() {
+  if self.node.holds<YamlMap>() {
     if !b.node.holds<YamlMap>() {
       return false;
     }
 
-    let am: YamlMap? = a.node.get_if<YamlMap>();
+    let am: YamlMap? = self.node.get_if<YamlMap>();
     let bm: YamlMap? = b.node.get_if<YamlMap>();
     if am == nil {
       return false;
@@ -230,7 +233,7 @@ func yaml_trees_equal(a: Yaml, b: Yaml) -> bool {
           return false;
         }
 
-        if !yaml_trees_equal((*ea).value,(*eb).value) {
+        if !((*ea).value).Equals((*eb).value) {
           return false;
         }
       }
@@ -275,7 +278,7 @@ method(YamlEmitter) EmitMap(mapv: YamlMap, indent: int32, after_dash: bool) -> v
 
     unsafe {
       let ep: *mut YamlMapEntry = &mut mapv.entries.buf[i];
-      self.buf.Append(yaml_emit_scalar_text((*ep).key));
+      self.buf.Append(YamlEmitter.ScalarText((*ep).key));
       if (*ep).value.node.holds<YamlMap>() {
         let m: YamlMap? = (*ep).value.node.get_if<YamlMap>();
         if m != nil {
@@ -404,7 +407,7 @@ method(YamlEmitter) EmitYaml(node: Yaml, indent: int32, after_dash: bool) -> voi
       }
 
       let n: YamlInt = iv as YamlInt;
-      self.buf.Append(YamlI64Text(n.value));
+      self.buf.Append((n.value).ToString());
     }
 
     return;
@@ -418,7 +421,7 @@ method(YamlEmitter) EmitYaml(node: Yaml, indent: int32, after_dash: bool) -> voi
       }
 
       let s: YamlStr = sv as YamlStr;
-      self.buf.Append(yaml_emit_scalar_text(copy(s.value)));
+      self.buf.Append(YamlEmitter.ScalarText(copy(s.value)));
     }
 
     return;
@@ -449,22 +452,12 @@ method(YamlEmitter) EmitYaml(node: Yaml, indent: int32, after_dash: bool) -> voi
   self.buf.Append("null");
 }
 
-/**
- * @brief Serialize `node` to toolchain-style block YAML (insertion-order maps).
- * @note Product entry is `YamlWriter.Emit` (yaml.md §0.4 / §1.5); this is the shared body.
- */
-pub func YamlEmitText(node: Yaml) -> string {
+/** @brief Encode a retained YAML node as canonical document text.
+ * @returns Language-owned YAML text. */
+pub static method(YamlEmitter) Emit(node: Yaml) -> string {
   var em: YamlEmitter = YamlEmitter{buf: StringBuffer.NewWithCapacity(64)};
   em.EmitYaml(node, 0, false);
   em.buf.Append("\n");
 
   return em.buf.Take();
-}
-
-/**
- * @brief Compare YAML node kinds and scalar/collection contents recursively.
- * @returns True when both YAML trees match structurally and by value.
- */
-pub func YamlTreesEqual(a: Yaml, b: Yaml) -> bool {
-  return yaml_trees_equal(a, b);
 }
