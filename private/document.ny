@@ -268,24 +268,28 @@ method(YamlDomState) EndSeq() -> bool {
   }
 }
 
+@override
 method(YamlDomBuilder) Null() -> bool {
   unsafe {
     return (*self.st).AddValue(Yaml.Null());
   }
 }
 
+@override
 method(YamlDomBuilder) Bool(b: bool) -> bool {
   unsafe {
     return (*self.st).AddValue(Yaml.FromBool(b));
   }
 }
 
+@override
 method(YamlDomBuilder) Int64(v: int64) -> bool {
   unsafe {
     return (*self.st).AddValue(Yaml.FromInt(v));
   }
 }
 
+@override
 method(YamlDomBuilder) String(s: string) -> bool {
   unsafe {
     let heap_s: string = (*self.st).CopyDurable(s);
@@ -299,12 +303,14 @@ method(YamlDomBuilder) String(s: string) -> bool {
   }
 }
 
+@override
 method(YamlDomBuilder) StartObject() -> bool {
   unsafe {
     return (*self.st).PushMap();
   }
 }
 
+@override
 method(YamlDomBuilder) Key(k: string) -> bool {
   unsafe {
     let fp: *mut YamlDomFrame = (*self.st).top;
@@ -334,6 +340,7 @@ method(YamlDomBuilder) Key(k: string) -> bool {
   }
 }
 
+@override
 method(YamlDomBuilder) EndObject(member_count: int32) -> bool {
   let _mc: int32 = member_count;
 
@@ -342,12 +349,14 @@ method(YamlDomBuilder) EndObject(member_count: int32) -> bool {
   }
 }
 
+@override
 method(YamlDomBuilder) StartArray() -> bool {
   unsafe {
     return (*self.st).PushSeq();
   }
 }
 
+@override
 method(YamlDomBuilder) EndArray(element_count: int32) -> bool {
   let _ec: int32 = element_count;
 

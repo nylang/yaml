@@ -73,12 +73,14 @@ method(YamlEvState) PushKind(k: int32) -> bool {
   }
 }
 
+@override
 method(YamlEventRecorder) Null() -> bool {
   unsafe {
     return (*self.st).PushKind(kYamlEvNull);
   }
 }
 
+@override
 method(YamlEventRecorder) Bool(b: bool) -> bool {
   unsafe {
     if !(*self.st).PushKind(kYamlEvBool) {
@@ -97,6 +99,7 @@ method(YamlEventRecorder) Bool(b: bool) -> bool {
   }
 }
 
+@override
 method(YamlEventRecorder) Int64(v: int64) -> bool {
   unsafe {
     if !(*self.st).PushKind(kYamlEvInt64) {
@@ -111,6 +114,7 @@ method(YamlEventRecorder) Int64(v: int64) -> bool {
   }
 }
 
+@override
 method(YamlEventRecorder) String(s: string) -> bool {
   unsafe {
     if !(*self.st).PushKind(kYamlEvString) {
@@ -125,12 +129,14 @@ method(YamlEventRecorder) String(s: string) -> bool {
   }
 }
 
+@override
 method(YamlEventRecorder) StartObject() -> bool {
   unsafe {
     return (*self.st).PushKind(kYamlEvStartObject);
   }
 }
 
+@override
 method(YamlEventRecorder) Key(k: string) -> bool {
   unsafe {
     if !(*self.st).PushKind(kYamlEvKey) {
@@ -145,6 +151,7 @@ method(YamlEventRecorder) Key(k: string) -> bool {
   }
 }
 
+@override
 method(YamlEventRecorder) EndObject(member_count: int32) -> bool {
   unsafe {
     if !(*self.st).PushKind(kYamlEvEndObject) {
@@ -159,12 +166,14 @@ method(YamlEventRecorder) EndObject(member_count: int32) -> bool {
   }
 }
 
+@override
 method(YamlEventRecorder) StartArray() -> bool {
   unsafe {
     return (*self.st).PushKind(kYamlEvStartArray);
   }
 }
 
+@override
 method(YamlEventRecorder) EndArray(element_count: int32) -> bool {
   unsafe {
     if !(*self.st).PushKind(kYamlEvEndArray) {
