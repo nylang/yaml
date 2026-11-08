@@ -129,8 +129,8 @@ static method(YamlDomFrame) Release(fp: *mut YamlDomFrame) -> void {
 
   unsafe {
     (*fp).pending_key = "";
-    (*fp).map = YamlMap{entries: Array<YamlMapEntry>{}};
-    (*fp).seq = YamlSeq{items: Array<Yaml>{}};
+    (*fp).map = YamlMap{entries: Array<YamlMapEntry>.New()};
+    (*fp).seq = YamlSeq{items: Array<Yaml>.New()};
     (*fp).prev = ptr<YamlDomFrame>.null();
   }
 
@@ -234,7 +234,7 @@ method(YamlDomState) EndMap() -> bool {
     }
 
     let node: Yaml = Yaml{node:(*fp).map};
-    (*fp).map = YamlMap{entries: Array<YamlMapEntry>{}};
+    (*fp).map = YamlMap{entries: Array<YamlMapEntry>.New()};
     self.top = (*fp).prev;
     self.depth = self.depth - 1;
     YamlDomFrame.Release(fp);
@@ -259,7 +259,7 @@ method(YamlDomState) EndSeq() -> bool {
     }
 
     let node: Yaml = Yaml{node:(*fp).seq};
-    (*fp).seq = YamlSeq{items: Array<Yaml>{}};
+    (*fp).seq = YamlSeq{items: Array<Yaml>.New()};
     self.top = (*fp).prev;
     self.depth = self.depth - 1;
     YamlDomFrame.Release(fp);

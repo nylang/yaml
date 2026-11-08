@@ -260,10 +260,10 @@ func test_yaml_error_and_stubs() {
 
 @test
 func test_yaml_map_seq_len_empty() {
-  let empty_entries: Array<YamlMapEntry> = Array<YamlMapEntry>{};
+  let empty_entries: Array<YamlMapEntry> = Array<YamlMapEntry>.New();
   let m: YamlMap = YamlMap{entries: empty_entries};
   AssertEqI32(m.Len(), 0);
-  var m2: YamlMap = YamlMap{entries: Array<YamlMapEntry>{}};
+  var m2: YamlMap = YamlMap{entries: Array<YamlMapEntry>.New()};
   let v: Yaml = Yaml{node: YamlStr{value: "x"}};
   m2.entries.Push(YamlMapEntry{key: "name", value: v});
   AssertEqI32(m2.Len(), 1);
@@ -272,7 +272,7 @@ func test_yaml_map_seq_len_empty() {
   AssertTrue(map != nil);
   let mm: YamlMap = map as YamlMap;
   AssertEqI32(mm.Len(), 1);
-  let empty_items: Array<Yaml> = Array<Yaml>{};
+  let empty_items: Array<Yaml> = Array<Yaml>.New();
   let s: YamlSeq = YamlSeq{items: empty_items};
   AssertEqI32(s.Len(), 0);
 }

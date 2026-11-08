@@ -39,11 +39,11 @@ func test_yaml_emit_empty_collections_and_null() {
   let nt: string = YamlWriter.Emit(n);
   AssertTrue(nt.Contains("null"));
   n.AssertRoundTrip();
-  let empty_map: Yaml = Yaml{node: YamlMap{entries: Array<YamlMapEntry>{}}};
+  let empty_map: Yaml = Yaml{node: YamlMap{entries: Array<YamlMapEntry>.New()}};
   let mt: string = YamlWriter.Emit(empty_map);
   AssertTrue(mt.Contains("{}"));
   empty_map.AssertRoundTrip();
-  let empty_seq: Yaml = Yaml{node: YamlSeq{items: Array<Yaml>{}}};
+  let empty_seq: Yaml = Yaml{node: YamlSeq{items: Array<Yaml>.New()}};
   let st: string = YamlWriter.Emit(empty_seq);
   AssertTrue(st.Contains("[]"));
   empty_seq.AssertRoundTrip();

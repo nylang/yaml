@@ -47,8 +47,8 @@ static method(YamlParser) New(tokens: YamlScanResult) -> YamlParser {
     entry_column: 1,
     entry_ok: false,
     parse_arm: 0,
-    parse_map: YamlMap{entries: Array<YamlMapEntry>{}},
-    parse_seq: YamlSeq{items: Array<Yaml>{}}
+    parse_map: YamlMap{entries: Array<YamlMapEntry>.New()},
+    parse_seq: YamlSeq{items: Array<Yaml>.New()}
   };
 }
 
@@ -607,8 +607,8 @@ method(YamlParser) ParseScalar() -> Yaml {
 
 method(YamlParser) ParseFlowMap() -> void {
   self.Eat(kYamlTokLBrace, "expected '{'");
-  var mapv: YamlMap = YamlMap{entries: Array<YamlMapEntry>{}};
-  var hashes: Array<int32> = Array<int32>{};
+  var mapv: YamlMap = YamlMap{entries: Array<YamlMapEntry>.New()};
+  var hashes: Array<int32> = Array<int32>.New();
   if self.PeekKind() == kYamlTokRBrace {
     self.Skip();
     self.parse_map = mapv;
@@ -682,7 +682,7 @@ method(YamlParser) ParseFlowMap() -> void {
 
 method(YamlParser) ParseFlowSeq() -> void {
   self.Eat(kYamlTokLBracket, "expected '['");
-  var seqv: YamlSeq = YamlSeq{items: Array<Yaml>{}};
+  var seqv: YamlSeq = YamlSeq{items: Array<Yaml>.New()};
   if self.PeekKind() == kYamlTokRBracket {
     self.Skip();
     self.parse_seq = seqv;
@@ -787,8 +787,8 @@ method(YamlParser) ParseMapValue() -> Yaml {
 method(YamlParser) ParseBlockMap() -> void {
   // A compact sequence-item map ends before the next parent mapping key.
   let base_column: int32 = self.tokens.Get(self.parse_i).column;
-  var mapv: YamlMap = YamlMap{entries: Array<YamlMapEntry>{}};
-  var hashes: Array<int32> = Array<int32>{};
+  var mapv: YamlMap = YamlMap{entries: Array<YamlMapEntry>.New()};
+  var hashes: Array<int32> = Array<int32>.New();
   while !self.parse_failed {
     let k: int32 = self.PeekKind();
     if YamlParser.IsStopKind(k) {
@@ -986,7 +986,7 @@ method(YamlParser) ParseSeqItem() -> Yaml {
 }
 
 method(YamlParser) ParseBlockSeq() -> void {
-  var seqv: YamlSeq = YamlSeq{items: Array<Yaml>{}};
+  var seqv: YamlSeq = YamlSeq{items: Array<Yaml>.New()};
   while !self.parse_failed {
     if self.PeekKind() != kYamlTokDash {
       break;

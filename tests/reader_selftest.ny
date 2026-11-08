@@ -50,11 +50,11 @@ struct YamlEventRecorder implements YamlHandler {
 
 static method(YamlEvState) New() -> YamlEvState {
   return YamlEvState{
-    kinds: Array<int32>{},
-    bools: Array<int32>{},
-    ints: Array<int64>{},
-    strings: Array<string>{},
-    counts: Array<int32>{},
+    kinds: Array<int32>.New(),
+    bools: Array<int32>.New(),
+    ints: Array<int64>.New(),
+    strings: Array<string>.New(),
+    counts: Array<int32>.New(),
     abort_at: -1,
     seen: 0
   };

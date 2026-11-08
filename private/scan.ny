@@ -171,11 +171,11 @@ pub static method(YamlScanResult) New() -> YamlScanResult {
     ok: true,
     src_data: 0 as *const int8,
     src_len: 0,
-    kinds: Array<int32>{},
-    lines: Array<int32>{},
-    columns: Array<int32>{},
-    lex_starts: Array<int32>{},
-    lex_lens: Array<int32>{},
+    kinds: Array<int32>.New(),
+    lines: Array<int32>.New(),
+    columns: Array<int32>.New(),
+    lex_starts: Array<int32>.New(),
+    lex_lens: Array<int32>.New(),
     error: YamlError{line: 0, column: 0, message: ""}
   };
 }
@@ -774,12 +774,12 @@ pub method(YamlScanResult) Tokenize(text: string) -> void {
     err_line: 1,
     err_column: 1,
     err_message: string.ViewFrom(0 as *const int8, 0),
-    kinds: Array<int32>{},
-    lines: Array<int32>{},
-    columns: Array<int32>{},
-    lex_starts: Array<int32>{},
-    lex_lens: Array<int32>{},
-    indents: Array<int32>{}
+    kinds: Array<int32>.New(),
+    lines: Array<int32>.New(),
+    columns: Array<int32>.New(),
+    lex_starts: Array<int32>.New(),
+    lex_lens: Array<int32>.New(),
+    indents: Array<int32>.New()
   };
   sc.indents.Push(0);
   sc.SkipBom();
