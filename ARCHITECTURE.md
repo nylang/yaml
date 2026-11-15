@@ -23,6 +23,9 @@ durable construction and output. This structure does not change the YAML grammar
   `Yaml.Equals` owns structural comparison.
 - `private/dump.ny` owns diagnostic tree formatting, independent of grammar input
   and durable frame allocation.
+- `private/schema.ny` exposes `YamlSchema` and supplies read-only DOM handles
+  to the schema package. It follows the parser's scalar types, including quoted
+  numbers as strings. The engine owns the compiled rules.
 
 Reader depends on syntax operations. DOM depends on Reader events and encoding.
 Emission and diagnostic formatting share scalar formatting, rather than importing

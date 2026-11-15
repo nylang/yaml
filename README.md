@@ -5,6 +5,15 @@ Rebuild precompiled consumers against the matching interfaces and runtime.
 
 Nyra YAML parser and document model. Import `yaml:yaml.ny`.
 
+## Document validation
+
+Pass a parsed YAML rule to `YamlSchema.Compile(rule.Root())` and call
+`Validate(instance.Root())` on the returned `YamlSchema`. The compiled
+schema owns the rule data. Validation reads the YAML DOM through the shared
+`schema` engine and preserves the types produced by the parser. In
+particular, a quoted number remains a string. Use `Compiled()` and
+`FromCompiled` to share rules with another format.
+
 See [MIGRATION.md](MIGRATION.md) for source history and portable dependency
 setup. Run the package suite from NyraLang with
 `python3 nyra.py test --package yaml`. Test data is owned by this repository.

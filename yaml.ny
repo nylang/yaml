@@ -9,6 +9,8 @@
  * @see docs/design/compiler/yaml.md
  */
 export "interface/yaml.ni";
+export "interface/schema.ni";
+export "schema:schema.ny";
 export "public/yaml.ny";
 import "interface/yaml.ni";
 import "public/yaml.ny";
@@ -18,3 +20,4 @@ import "private/reader.ny";
 import "private/document.ny";
 import "private/emit.ny";
 import "private/dump.ny";
+import "private/schema.ny";
